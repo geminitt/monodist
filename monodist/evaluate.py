@@ -15,6 +15,7 @@ from . import geometry, kitti, match, metrics, mlp
 from .detect import merge
 
 CONF = 0.25  # detections used for distance: the usual operating point of a YOLO detector
+MIN_Z = 2.0  # closer objects are all cut by the image border; AbsRel near Z = 0 would dominate the mean
 
 
 def constants(root):
@@ -97,11 +98,14 @@ def run(root, det_dir, const, n_boot=2000, seed=0):
     test_gt = {k: v for k, v in gt.items() if k[0] in kitti.SPLIT["test"]}
     tm = np.isin(det["seq"], kitti.SPLIT["test"])
     tdet = {k: v[tm] for k, v in det.items()}
-    res = {"det_dir": str(det_dir), "conf": CONF, "constants": const,
+    res = {"det_dir": str(det_dir), "conf": CONF, "min_z": MIN_Z, "constants": const,
            "detection": match.detection_report(tdet, test_gt, status[tm]),
            "recall_by_distance": match.recall_by_distance(tdet, test_gt, status[tm], gt_idx[tm], CONF, metrics.BINS)}
 
     pairs = match.matched_pairs(det, gt, status, gt_idx, CONF)
+    near = pairs["z"] < MIN_Z
+    res["excluded_below_min_z"] = int(near.sum())
+    pairs = {k: v[~near] for k, v in pairs.items()}
     val, test = subset(pairs, kitti.SPLIT["val"]), subset(pairs, kitti.SPLIT["test"])
     model, epochs, curve = mlp.train(feats(val, cam), val["z"], val["seq"], seed=seed)
     res["mlp"] = {"epochs": epochs, "heldout_l1_log": [float(v) for v in curve], "n_train": int(len(val["z"]))}

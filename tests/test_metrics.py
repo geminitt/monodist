@@ -36,3 +36,11 @@ def test_fast_mean_path_agrees_with_the_loop():
     fast = metrics.cluster_bootstrap(values, clusters, np.mean, n_boot=4000, seed=1)
     slow = metrics.cluster_bootstrap(values, clusters, lambda v, axis: np.mean(v, axis=axis), n_boot=4000, seed=1)
     assert np.allclose(fast, slow, atol=0.004)
+
+
+def test_latency_bootstrap_median_and_imgsz_parsing():
+    from monodist.detect import parse_imgsz
+    from monodist.latency import bootstrap_median
+    m, lo, hi = bootstrap_median(np.arange(101, dtype=float))
+    assert m == 50 and lo < 50 < hi
+    assert parse_imgsz("1280") == 1280 and parse_imgsz("416,1280") == [416, 1280]

@@ -12,6 +12,11 @@ import numpy as np
 
 from . import kitti
 
+
+def parse_imgsz(s):
+    v = [int(x) for x in str(s).split(",")]
+    return v[0] if len(v) == 1 else v
+
 COCO_TO_KITTI = {2: 0, 0: 1}  # COCO car -> Car, COCO person -> Pedestrian
 
 
@@ -61,7 +66,7 @@ def main():
     ap.add_argument("--root", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--coco", action="store_true", help="COCO-trained weights: keep car and person only")
-    ap.add_argument("--imgsz", type=int, default=1280)
+    ap.add_argument("--imgsz", default="1280", help="one size, or H,W for a fixed-shape TensorRT engine")
     ap.add_argument("--half", action="store_true")
     ap.add_argument("--conf", type=float, default=0.01)
     ap.add_argument("--batch", type=int, default=16)
@@ -78,7 +83,7 @@ def main():
         if f.exists():
             continue
         t = time.time()
-        d = detect_sequence(model, args.root, seq, args.imgsz, args.half, args.conf, args.coco, args.batch, args.frames)
+        d = detect_sequence(model, args.root, seq, parse_imgsz(args.imgsz), args.half, args.conf, args.coco, args.batch, args.frames)
         np.savez(out / f"{seq}.tmp.npz", **d)
         (out / f"{seq}.tmp.npz").rename(f)
         print(f"{seq}: {len(d['score'])} detections in {time.time() - t:.1f}s", flush=True)
