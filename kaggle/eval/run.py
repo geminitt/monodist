@@ -2,6 +2,7 @@
 # Needs the output of the monodist-finetune kernel (best.pt). MODE = "smoke" runs a few frames of everything.
 MODE = "smoke"
 COMMIT = "main"
+ONLY = None  # e.g. ["ft_1280_trt16"]: run only these configurations (and their pipelined variants)
 
 # <common.py>
 
@@ -27,7 +28,10 @@ print("fine-tuned weights:", ft, flush=True)
 engines = {}
 for name, shape in (("ft_1280_trt16", [416, 1280]), ("ft_640_trt16", [224, 640])):
     try:
-        path = YOLO(ft).export(format="engine", quantize=16, imgsz=shape, nms=False, batch=1, device=0)
+        if ONLY and name not in ONLY:
+            continue
+        path = Path(YOLO(ft).export(format="engine", quantize=16, imgsz=shape, nms=False, batch=1, device=0))
+        path = path.rename(path.with_name(f"{name}.engine"))  # every export writes ft.engine: keep each one
         engines[name] = (path, f"{shape[0]},{shape[1]}")
         log("eval", step="export", config=name, path=str(path))
     except Exception:
@@ -36,6 +40,8 @@ for name, shape in (("ft_1280_trt16", [416, 1280]), ("ft_640_trt16", [224, 640])
 configs = [("coco_1280", coco, "1280", False, True), ("ft_1280", ft, "1280", False, False),
            ("ft_1280_fp16", ft, "1280", True, False), ("ft_640", ft, "640", False, False)]
 configs += [(n, p, s, False, False) for n, (p, s) in engines.items()]
+if ONLY:
+    configs = [c for c in configs if c[0] in ONLY]
 
 seqs = kitti.SEQUENCES  # train sequences too: the distance MLP trains on each detector's own train-split boxes
 if smoke:
@@ -43,7 +49,7 @@ if smoke:
 for name, weights, imgsz, half, is_coco in configs:
     cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.detect --weights {weights} --root {root} --out {WORK}/det/{name} "
            f"--imgsz {imgsz} --seqs {' '.join(seqs)}" + (" --half" if half else "") + (" --coco" if is_coco else "")
-           + (" --frames 20" if smoke else ""))
+           + (" --frames 20" if smoke else "") + (" --batch 1" if str(weights).endswith(".engine") else ""))
     t = time.time()
     try:
         sh(cmd)
@@ -61,4 +67,5 @@ for name, weights, imgsz, half, pipelined in runs:
         sh(cmd)
     except Exception:
         log("eval", step="latency", config=name, error=traceback.format_exc()[-2000:])
-sh(f"nproc; lscpu | grep 'Model name'; nvidia-smi --query-gpu=name,clocks.max.sm --format=csv")
+log("eval", step="hardware", cpu_count=os.cpu_count(), affinity=len(os.sched_getaffinity(0)))
+sh("lscpu | grep 'Model name'; nvidia-smi --query-gpu=name,clocks.max.sm --format=csv")

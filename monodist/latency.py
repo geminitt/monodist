@@ -74,6 +74,8 @@ def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False
 
     for p in paths[:warmup]:
         process(*load(p)[:1], time.perf_counter(), 0, 0)
+    if isinstance(imgsz, list):  # a fixed-shape engine silently runs at its own shape: make sure it is the asked one
+        assert list(model.predictor.imgsz) == imgsz, f"engine runs at {model.predictor.imgsz}, asked for {imgsz}"
     records = []
     wall = []
     for _ in range(rounds):
