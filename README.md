@@ -85,10 +85,11 @@ sequence 0007 x 3 rounds after 30 warm-up frames; medians in ms. "Serial" runs t
 | fine-tuned, TensorRT fp16, 1280 | 0.451 | 12.1 | 2.7 | 4.0 | 0.6 | 21.6 | 46 | 71 |
 | **fine-tuned + NMS, TensorRT fp16, 1280** | **0.476** | 12.0 | 2.7 | 3.9 | 1.5 | 22.2 | 45 | **71** |
 | fine-tuned, PyTorch fp32, 640 | 0.358 | 12.2 | 1.1 | 10.1 | 0.5 | 26.2 | 38 | |
-| fine-tuned, TensorRT fp16, 640 | 0.358 | 12.1 | 1.1 | 2.7 | 0.6 | 18.6 | 53 | 68 |
+| fine-tuned, TensorRT fp16, 640 | 0.358 | 12.0 | 1.1 | 2.7 | 0.6 | 18.6 | 53 | 68 |
 
 Serial total also includes reading the file (~1 ms), Ultralytics' own overhead (~0.5 ms) and the distance
-step (0.7 ms for the MLP and both formulas). Pipelined "FPS" is throughput; the latency of one frame is still
+step (0.7 ms for the features, one MLP and both formulas; the five-seed ensemble that was evaluated runs four
+more MLPs, about 0.1 ms on a laptop CPU). Pipelined "FPS" is throughput; the latency of one frame is still
 about the serial total. FPS varies across the three rounds by up to 8 for the PyTorch NMS rows
 and up to 4 elsewhere (per-round values in the summary). Full per-stage tables with bootstrap intervals are
 in [results/summary.md](results/summary.md).
@@ -124,16 +125,41 @@ What the table says:
    20 m, where the bottom edge is only a few pixels below the horizon, these errors dominate.
 4. **Fine-tuning helps detection, not distance.** It raises mAP50-95 by 6.4 points (with NMS), mostly through
    tighter car boxes, but its MLP is not better. On the 5,496 test object-frames that both detectors found,
-   the fine-tuned MLP is 5.9 points worse on average [0.5, 15.9]; one car in sequence 0015, parked 2-5 m
-   from the camera and cut by the border for 300 frames, accounts for 3.0 of the 3.9 points of the
-   NMS-free comparison. Without it the two are within a point (7.2% vs 8.2%).
+   the fine-tuned MLP is 5.9 points worse on average [0.5, 15.9]. One car accounts for 5.0 of those 5.9
+   points: in sequence 0015 it stays 2-5 m from the camera, cut by the image border, for 300 frames.
+   Without it the two are within a point (7.2% vs 8.1%).
 5. **After fine-tuning, YOLO26's NMS-free head lags behind its NMS head** (0.451 vs 0.477 mAP50-95), while
    with the COCO weights the two are equal (0.413 vs 0.414). The fine-tuned NMS-free head also stretches
    9.5% of its boxes to the bottom edge of the image, against 1% for the NMS head and 6% in the labels.
-   The best epoch was the 4th, so the one-to-one head may simply be undertrained.
+   The best epoch (the 4th) was chosen by Ultralytics' validation, which scores the NMS head, so nothing
+   selected for the one-to-one head, and after four epochs it may simply be undertrained.
 6. **Far objects are the weak point.** Beyond 40 m the COCO model finds 63% of the cars and 7% of the
    pedestrians; the fine-tuned model finds fewer far cars with its NMS-free head (42%) and none of the 76 far
    pedestrians. Input 640 instead of 1280 loses more: 29% of far cars.
+
+## Checks
+
+- **AP implementation**: on the val sequences, without the ignore rules and with NMS, it gives mAP50-95
+  0.466 (Car 0.548, Pedestrian 0.384) against 0.465 (0.552, 0.378) from Ultralytics' own validation of the
+  same weights.
+- **Labels**: the 3D boxes projected with P2 overlap the 2D labels at a median IoU of 0.97.
+- **Formulas**: both invert the pinhole projection exactly on synthetic boxes (unit tests); the flat-road
+  formula applied to the projected bottom centre of real labels recovers their height to the millimetre.
+- **Reproducibility**: the COCO detections from a GPU run and from a CPU run agree on 46,230 of 46,231 boxes
+  (score >= 0.05) at IoU > 0.999; rerunning the evaluation reproduces its JSON byte for byte.
+- **Precision**: PyTorch fp32, fp16 and TensorRT fp16 give the same mAP50-95 to three decimals.
+- **Every number in this README** was recomputed from `results/` by a script before publishing.
+
+## Limitations
+
+- The fine-tuning labels contain only Car and Pedestrian; vans, cyclists and DontCare regions are left
+  unlabelled in the training images, so the detector learns them as background. The evaluation ignores
+  detections on vans and DontCare regions, as the KITTI devkit does, but a COCO "person" on a cyclist counts
+  as a false alarm.
+- The test split has 30 pedestrian tracks and 76 pedestrian object-frames beyond 40 m; pedestrian intervals
+  are wide and far pedestrians are barely measured.
+- One fine-tuning run, one split: the detector numbers carry no seed-to-seed uncertainty.
+- Timings are for one frame at a time on a Kaggle T4 with 4 CPU cores; PNG decoding depends on the CPU.
 
 ## Mistakes caught while doing this
 
@@ -162,7 +188,7 @@ pixi install && pixi run test          # 31 tests on CPU, about 30 s (labels nee
 
 # Kaggle (GPU T4, dataset leducnhuan/kitti-tracking), from the repo root, code pinned to the pushed HEAD:
 python kaggle/push.py finetune --mode full      # ~40 min
-python kaggle/push.py eval --mode full          # detections of every configuration + latency, ~40 min
+python kaggle/push.py eval --mode full          # detections of every configuration + latency, ~1 h
 kaggle kernels output spritker/monodist-eval -p runs/kaggle/eval
 
 # Local, CPU only (~7 min for eight configurations):
