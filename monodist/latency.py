@@ -5,6 +5,8 @@
 Stages: read the PNG file, decode it, then Ultralytics' own synchronised timers for preprocess (letterbox,
 upload), inference and postprocess, then the distance step on CPU. "overhead" is what model.predict costs
 beyond its three timed stages. Frames are the unit of the statistics; rounds repeat the same frames.
+With --pipelined the next frame is read and decoded on a worker thread, so "total" becomes the time per frame
+in steady state (the inverse of throughput), not the latency of one frame.
 """
 import argparse
 import json
