@@ -38,7 +38,8 @@ for name, shape in (("ft_1280_trt16", [416, 1280]), ("ft_640_trt16", [224, 640])
         log("eval", step="export", config=name, error=traceback.format_exc()[-2000:])
 
 configs = [("coco_1280", coco, "1280", False, True), ("ft_1280", ft, "1280", False, False),
-           ("ft_1280_fp16", ft, "1280", True, False), ("ft_640", ft, "640", False, False)]
+           ("ft_1280_fp16", ft, "1280", True, False), ("ft_640", ft, "640", False, False),
+           ("coco_1280_nms", coco, "1280", False, True), ("ft_1280_nms", ft, "1280", False, False)]
 configs += [(n, p, s, False, False) for n, (p, s) in engines.items()]
 if ONLY:
     configs = [c for c in configs if c[0] in ONLY]
@@ -49,7 +50,7 @@ if smoke:
 for name, weights, imgsz, half, is_coco in configs:
     cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.detect --weights {weights} --root {root} --out {WORK}/det/{name} "
            f"--imgsz {imgsz} --seqs {' '.join(seqs)}" + (" --half" if half else "") + (" --coco" if is_coco else "")
-           + (" --frames 20" if smoke else "") + (" --batch 1" if str(weights).endswith(".engine") else ""))
+           + (" --frames 20" if smoke else "") + (" --batch 1" if str(weights).endswith(".engine") else "") + (" --nms" if name.endswith("_nms") else ""))
     t = time.time()
     try:
         sh(cmd)
@@ -62,7 +63,7 @@ runs = [(n, w, s, h, False) for n, w, s, h, _ in configs]
 runs += [(n + "_pipelined", w, s, h, True) for n, w, s, h, _ in configs if n in ("ft_1280", "ft_1280_trt16")]
 for name, weights, imgsz, half, pipelined in runs:
     cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.latency --weights {weights} --root {root} --out {WORK}/latency/{name}.json "
-           f"--imgsz {imgsz} {lat}" + (" --half" if half else "") + (" --pipelined" if pipelined else ""))
+           f"--imgsz {imgsz} {lat}" + (" --half" if half else "") + (" --pipelined" if pipelined else "") + (" --nms" if name.endswith("_nms") else ""))
     try:
         sh(cmd)
     except Exception:

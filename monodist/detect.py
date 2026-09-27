@@ -20,15 +20,16 @@ def parse_imgsz(s):
 COCO_TO_KITTI = {2: 0, 0: 1}  # COCO car -> Car, COCO person -> Pedestrian
 
 
-def detect_sequence(model, root, seq, imgsz, half, conf, coco, batch, frames=None):
+def detect_sequence(model, root, seq, imgsz, half, conf, coco, batch, frames=None, nms=False):
     paths = [str(kitti.image_path(root, seq, f)) for f in range(frames or kitti.FRAMES[seq])]
     classes = list(COCO_TO_KITTI) if coco else None
     rows = {"frame": [], "box": [], "score": [], "cls": []}
     shape = None
     for i in range(0, len(paths), batch):
-        # nms=False selects YOLO26's one-to-one (NMS-free) head; quantize=16 runs the model in fp16
+        # nms=False selects YOLO26's one-to-one (NMS-free) head, nms=None its one-to-many head followed by NMS;
+        # quantize=16 runs the model in fp16
         results = model.predict(paths[i:i + batch], imgsz=imgsz, quantize=16 if half else None, conf=conf,
-                                classes=classes, max_det=300, nms=False, verbose=False)
+                                classes=classes, max_det=300, nms=None if nms else False, verbose=False)
         for k, r in enumerate(results):
             shape = r.orig_shape
             b = r.boxes
@@ -70,6 +71,7 @@ def main():
     ap.add_argument("--half", action="store_true")
     ap.add_argument("--conf", type=float, default=0.01)
     ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--nms", action="store_true", help="one-to-many head + NMS instead of the NMS-free head")
     ap.add_argument("--seqs", nargs="*", default=kitti.SEQUENCES)
     ap.add_argument("--frames", type=int, default=None, help="only the first N frames (smoke tests)")
     args = ap.parse_args()
@@ -83,7 +85,8 @@ def main():
         if f.exists():
             continue
         t = time.time()
-        d = detect_sequence(model, args.root, seq, parse_imgsz(args.imgsz), args.half, args.conf, args.coco, args.batch, args.frames)
+        d = detect_sequence(model, args.root, seq, parse_imgsz(args.imgsz), args.half, args.conf, args.coco, args.batch, args.frames,
+                             args.nms)
         np.savez(out / f"{seq}.tmp.npz", **d)
         (out / f"{seq}.tmp.npz").rename(f)
         print(f"{seq}: {len(d['score'])} detections in {time.time() - t:.1f}s", flush=True)

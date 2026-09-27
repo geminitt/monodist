@@ -40,7 +40,7 @@ def bootstrap_median(v, n=2000, seed=0):
     return [float(np.median(v)), *np.percentile(meds, [2.5, 97.5]).tolist()]
 
 
-def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False):
+def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False, nms=False):
     from ultralytics import YOLO
     model = YOLO(weights, task="detect")
     mlp = DistanceMLP(len(geometry.FEATURES)).eval()
@@ -48,7 +48,7 @@ def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False
     k = kitti.intrinsics(kitti.load_calib(root, seq))
     paths = [kitti.image_path(root, seq, i) for i in range(frames)]
     coco = len(model.names) == 80
-    kw = dict(imgsz=imgsz, quantize=16 if half else None, conf=0.25, max_det=300, nms=False, verbose=False,
+    kw = dict(imgsz=imgsz, quantize=16 if half else None, conf=0.25, max_det=300, nms=None if nms else False, verbose=False,
               classes=[0, 2] if coco else None)
 
     def load(p):
@@ -95,7 +95,7 @@ def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False
                 img, tr, td = load(p)
                 records.append(process(img, t_start, tr, td))
         wall.append(time.perf_counter() - t_round)
-    out = {"weights": str(weights), "imgsz": imgsz, "half": half, "pipelined": pipelined, "seq": seq,
+    out = {"weights": str(weights), "imgsz": imgsz, "half": half, "pipelined": pipelined, "nms": nms, "seq": seq,
            "frames": frames, "rounds": rounds, "fps_per_round": [frames / w for w in wall]}
     for s in STAGES:
         v = np.array([r[s] for r in records]) * 1e3
@@ -117,13 +117,14 @@ def main():
     ap.add_argument("--imgsz", default="1280")
     ap.add_argument("--half", action="store_true")
     ap.add_argument("--pipelined", action="store_true")
+    ap.add_argument("--nms", action="store_true")
     args = ap.parse_args()
     out = Path(args.out)
     if out.exists():
         print("exists, skipping:", out)
         return
     res = run(args.weights, args.root, args.seq, args.frames, args.rounds, args.warmup, parse_imgsz(args.imgsz),
-              args.half, args.pipelined)
+              args.half, args.pipelined, args.nms)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(res, indent=1))
     print(out.name, {s: round(res[s]["median_ms"][0], 2) for s in STAGES}, "fps", [round(v, 1) for v in res["fps_per_round"]])
