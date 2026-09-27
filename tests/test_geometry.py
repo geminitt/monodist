@@ -56,3 +56,10 @@ def test_iou():
     assert geometry.iou(a, a)[0, 0] == 1
     assert np.isclose(geometry.iou(a, [[5, 0, 15, 10]])[0, 0], 1 / 3)
     assert geometry.iou(a, [[20, 20, 30, 30]])[0, 0] == 0
+
+
+def test_iou_pairs_matches_the_pairwise_diagonal():
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0, 50, (20, 2)); a = np.hstack([a, a + rng.uniform(1, 30, (20, 2))])
+    b = a + rng.normal(0, 3, a.shape)
+    assert np.allclose(geometry.iou_pairs(a, b), np.diag(geometry.iou(a, b)))

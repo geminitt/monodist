@@ -3,7 +3,7 @@
     python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_1280 --det results/det/ft_1280
 
 Everything here runs on CPU from saved detections: fitting the geometric constants on the train labels,
-training the distance MLP on the val sequences, and scoring on the test sequences.
+training the distance MLP on this detector's boxes on the train sequences, and scoring on the test sequences.
 """
 import argparse
 import json
@@ -88,9 +88,9 @@ def subset(d, seqs):
     return {k: v[m] for k, v in d.items()}
 
 
-def run(root, det_dir, const, n_boot=2000, seed=0):
+def run(root, det_dir, const, n_boot=2000, seed=0, mlp_epochs=150):
     det, sizes = merge(det_dir)
-    seqs = kitti.SPLIT["val"] + kitti.SPLIT["test"]
+    seqs = kitti.SEQUENCES
     det = subset(det, seqs)
     cam = camera(root, seqs, sizes)
     gt = match.ground_truth(root, seqs)
@@ -106,9 +106,13 @@ def run(root, det_dir, const, n_boot=2000, seed=0):
     near = pairs["z"] < MIN_Z
     res["excluded_below_min_z"] = int(near.sum())
     pairs = {k: v[~near] for k, v in pairs.items()}
-    val, test = subset(pairs, kitti.SPLIT["val"]), subset(pairs, kitti.SPLIT["test"])
-    model, epochs, curve = mlp.train(feats(val, cam), val["z"], val["seq"], seed=seed)
-    res["mlp"] = {"epochs": epochs, "heldout_l1_log": [float(v) for v in curve], "n_train": int(len(val["z"]))}
+    train, test = subset(pairs, kitti.SPLIT["train"]), subset(pairs, kitti.SPLIT["test"])
+    # How tight this detector's boxes are on each split: a fine-tuned detector is tighter on images it trained on,
+    # which would make an MLP trained on those boxes trust the box height too much.
+    res["box_iou_median"] = {sp: float(np.median(geometry.iou_pairs(p["box"], p["gt_box"])))
+                             for sp, p in ((sp, subset(pairs, kitti.SPLIT[sp])) for sp in kitti.SPLIT)}
+    model, epochs, curve = mlp.train(feats(train, cam), train["z"], train["seq"], max_epochs=mlp_epochs, seed=seed)
+    res["mlp"] = {"epochs": epochs, "heldout_l1_log": [float(v) for v in curve], "n_train": int(len(train["z"]))}
 
     za, zb, fallback = geometric(test, test["box"], cam, const)
     preds = {"size": za, "ground": zb, "mlp": mlp.predict(model, feats(test, cam))}

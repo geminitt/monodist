@@ -1,4 +1,4 @@
-# monodist: detections for every configuration on the val and test sequences, then per-frame latency (GPU T4).
+# monodist: detections for every configuration on all 21 sequences, then per-frame latency (GPU T4).
 # Needs the output of the monodist-finetune kernel (best.pt). MODE = "smoke" runs a few frames of everything.
 MODE = "smoke"
 COMMIT = "main"
@@ -37,7 +37,7 @@ configs = [("coco_1280", coco, "1280", False, True), ("ft_1280", ft, "1280", Fal
            ("ft_1280_fp16", ft, "1280", True, False), ("ft_640", ft, "640", False, False)]
 configs += [(n, p, s, False, False) for n, (p, s) in engines.items()]
 
-seqs = kitti.SPLIT["val"] + kitti.SPLIT["test"]
+seqs = kitti.SEQUENCES  # train sequences too: the distance MLP trains on each detector's own train-split boxes
 if smoke:
     seqs = ["0003", "0014"]
 for name, weights, imgsz, half, is_coco in configs:

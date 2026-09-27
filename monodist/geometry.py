@@ -19,6 +19,15 @@ def iou(a, b):
     return inter / np.maximum(area_a[:, None] + area_b[None, :] - inter, 1e-9)
 
 
+def iou_pairs(a, b):
+    """Row-wise IoU of two (N, 4) box arrays."""
+    ix = np.clip(np.minimum(a[:, 2], b[:, 2]) - np.maximum(a[:, 0], b[:, 0]), 0, None)
+    iy = np.clip(np.minimum(a[:, 3], b[:, 3]) - np.maximum(a[:, 1], b[:, 1]), 0, None)
+    inter = ix * iy
+    union = (a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1]) + (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1]) - inter
+    return inter / np.maximum(union, 1e-9)
+
+
 def size_distance(box, cls, f, class_height):
     """Known-size method: Z = f * H / h, with H the mean real height of the class."""
     h = np.maximum(box[:, 3] - box[:, 1], 1e-6)
