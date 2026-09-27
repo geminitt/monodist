@@ -1,0 +1,9 @@
+.pixi/
+__pycache__/
+*.egg-info/
+data/
+runs/
+*.pt
+*.engine
+*.onnx
+kaggle/*/build/

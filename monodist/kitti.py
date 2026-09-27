@@ -1,0 +1,89 @@
+"""KITTI tracking: labels, calibration and the fixed sequence split."""
+from pathlib import Path
+
+import numpy as np
+
+# Fixed split by sequence (never by frame: neighbouring frames are near duplicates).
+# Chosen so that Car and Pedestrian are each close to 60/20/20 in instances and in tracks.
+SPLIT = {
+    "train": ["0001", "0005", "0008", "0009", "0013", "0018", "0019", "0020"],
+    "val": ["0003", "0004", "0006", "0011", "0016"],
+    "test": ["0000", "0002", "0007", "0010", "0012", "0014", "0015", "0017"],
+}
+SEQUENCES = sorted(s for seqs in SPLIT.values() for s in seqs)
+CLASSES = ("Car", "Pedestrian")
+# A detection on a neighbouring class counts neither as a hit nor as a false alarm (as in the KITTI devkit).
+NEIGHBOURS = {"Van": "Car", "Person": "Pedestrian"}
+
+
+def training_dir(root):
+    """Accept either the dataset root or its training/ directory."""
+    root = Path(root)
+    for cand in (root, root / "training", root / "kitti_tracking" / "training"):
+        if (cand / "label_02").is_dir():
+            return cand
+    raise FileNotFoundError(f"no label_02/ under {root}")
+
+
+def load_labels(root, seq):
+    """One sequence of label_02 as a dict of arrays, one row per labelled object per frame."""
+    rows = [line.split() for line in open(training_dir(root) / "label_02" / f"{seq}.txt")]
+    num = np.array([[float(v) for i, v in enumerate(r) if i != 2] for r in rows]).reshape(-1, 16)
+    return {
+        "frame": num[:, 0].astype(int),
+        "track": num[:, 1].astype(int),
+        "type": np.array([r[2] for r in rows]),
+        "trunc": num[:, 2].astype(int),
+        "occ": num[:, 3].astype(int),
+        "box": num[:, 5:9],          # x1, y1, x2, y2 in pixels (camera 2 image)
+        "dim": num[:, 9:12],         # height, width, length in metres
+        "loc": num[:, 12:15],        # bottom centre of the 3D box, rectified camera-0 frame
+        "ry": num[:, 15],
+    }
+
+
+def load_calib(root, seq):
+    """Projection matrix P2 (3x4) of the left colour camera."""
+    for line in open(training_dir(root) / "calib" / f"{seq}.txt"):
+        if line.startswith("P2:"):
+            return np.array(line.split()[1:], float).reshape(3, 4)
+    raise ValueError(f"no P2 in calib {seq}")
+
+
+def intrinsics(P2):
+    """f, cx, cy and the offset t of camera 2 from the rectified camera-0 frame (P2 = K [I | t])."""
+    K = P2[:, :3]
+    t = np.linalg.solve(K, P2[:, 3])
+    return {"f": K[0, 0], "fy": K[1, 1], "cx": K[0, 2], "cy": K[1, 2], "t": t}
+
+
+def to_camera2(loc, P2):
+    """Move label locations from the camera-0 frame into camera 2, whose image the boxes live in."""
+    return loc + intrinsics(P2)["t"]
+
+
+def project(points, P2):
+    """Project (N, 3) camera-0 points to (N, 2) pixels of camera 2."""
+    p = np.hstack([points, np.ones((len(points), 1))]) @ P2.T
+    return p[:, :2] / p[:, 2:3]
+
+
+def box_corners(dim, loc, ry):
+    """The 8 corners (8, 3) of one labelled 3D box."""
+    h, w, l = dim
+    x = np.array([l, l, -l, -l, l, l, -l, -l]) / 2
+    y = np.array([0, 0, 0, 0, -h, -h, -h, -h])
+    z = np.array([w, -w, -w, w, w, -w, -w, w]) / 2
+    c, s = np.cos(ry), np.sin(ry)
+    R = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+    return (R @ np.vstack([x, y, z])).T + loc
+
+
+def image_path(root, seq, frame):
+    return training_dir(root) / "image_02" / seq / f"{frame:06d}.png"
+
+
+# Images per training sequence (8,008 in total), from the dataset listing.
+FRAMES = {"0000": 154, "0001": 447, "0002": 233, "0003": 144, "0004": 314, "0005": 297, "0006": 270,
+          "0007": 800, "0008": 390, "0009": 803, "0010": 294, "0011": 373, "0012": 78, "0013": 340,
+          "0014": 106, "0015": 376, "0016": 209, "0017": 145, "0018": 339, "0019": 1059, "0020": 837}

@@ -1,0 +1,22 @@
+[workspace]
+name = "monodist"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+# Local environment: CPU only. Analysis, the distance models and the tests run here;
+# detection, fine-tuning and latency run on a Kaggle T4 (see kaggle/).
+
+[dependencies]
+python = "3.12.*"
+pytorch = { version = ">=2.9", build = "cpu*" }
+torchvision = "*"
+numpy = "*"
+matplotlib = "*"
+pytest = "*"
+
+[pypi-dependencies]
+ultralytics = ">=8.4"
+monodist = { path = ".", editable = true }
+
+[tasks]
+test = "pytest -q tests"
