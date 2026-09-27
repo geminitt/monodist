@@ -1,105 +1,197 @@
-"""Collect results/eval/*.json and results/latency/*.json into one Markdown summary.
+"""Render README.md from README.template.md and the result files, so no number in the README is typed by hand.
 
-    python -m monodist.report > results/summary.md
+    python -m monodist.report --write     # regenerate README.md
+    python -m monodist.report --check     # exit 1 if README.md is not what the results give (run by CI)
+    python -m monodist.report --summary   # every table, printed (results/summary.md)
+
+The template holds prose with {placeholders}: {name} is a number from `values()`, {table:name} a Markdown
+table from `tables()`. A placeholder without a value fails loudly.
 """
+import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from . import kitti, metrics
 
+RESULTS = Path("results")
+DETECTORS = {"coco": "COCO weights", "finetuned_nms": "fine-tuned, NMS", "finetuned_e2e": "fine-tuned, NMS-free"}
 METHODS = {"size": "known size", "ground": "ground plane", "mlp": "MLP"}
+CONFIG_NAMES = {"a": "a: defaults", "b": "b: lower learning rate", "c": "c: + Van, Cyclist classes",
+                "d": "d: c + DontCare greyed", "e": "e: epoch chosen by NMS-free head"}
 
 
-def load(d):
-    return {p.stem: json.loads(p.read_text()) for p in sorted(Path(d).glob("*.json"))}
+def load(path):
+    return json.loads(Path(path).read_text())
 
 
-def ci(v, digits=3, pct=True):
-    k = 100 if pct else 1
-    return f"{v[0] * k:.1f}% [{v[1] * k:.1f}, {v[2] * k:.1f}]" if pct else f"{v[0]:.{digits}f} [{v[1]:.{digits}f}, {v[2]:.{digits}f}]"
+def pct(v, d=1):
+    return f"{v * 100:.{d}f}%"
 
 
-def table(header, rows):
-    out = ["| " + " | ".join(header) + " |", "|" + "|".join("---" for _ in header) + "|"]
-    out += ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
-    return "\n".join(out)
+def ci(v, d=1):
+    return f"{v[0] * 100:.{d}f}% [{v[1] * 100:.{d}f}, {v[2] * 100:.{d}f}]"
 
 
-def main(eval_dir="results/eval", latency_dir="results/latency"):
-    ev = {k: v for k, v in load(eval_dir).items() if not k.startswith("compare_")}
-    cmp = {k: v for k, v in load(eval_dir).items() if k.startswith("compare_")}
-    lat = load(latency_dir) if Path(latency_dir).is_dir() else {}
-    w = sys.stdout.write
+def table(header, rows, align=None):
+    out = ["| " + " | ".join(header) + " |", "|" + "|".join(align or ["---"] * len(header)) + "|"]
+    return "\n".join(out + ["| " + " | ".join(str(c) for c in r) + " |" for r in rows])
 
-    w("## Detection on the test sequences\n\n")
-    w(table(["Configuration", "Car AP50-95", "Pedestrian AP50-95", "mAP50-95", "mAP50"],
-            [[k, f"{r['detection']['Car']['AP50-95']:.3f}", f"{r['detection']['Pedestrian']['AP50-95']:.3f}",
-              f"{r['detection']['mAP50-95']:.3f}", f"{r['detection']['mAP50']:.3f}"] for k, r in ev.items()]) + "\n\n")
 
-    w("## Operating point: per-class score threshold with the best F1 on the val sequences\n\n")
-    w(table(["Configuration", *kitti.CLASSES], [[k] + [f"{r['conf'][c]:.3f}" for c in kitti.CLASSES] for k, r in ev.items()]) + "\n\n")
-    w("## Recall by distance at that operating point (IoU >= 0.5)\n\n")
-    rows = []
-    for k, r in ev.items():
+def cv_results(root=RESULTS / "cv"):
+    return {k: load(root / f"{k}.json") for k in DETECTORS if (root / f"{k}.json").exists()}
+
+
+def latency(root=RESULTS / "latency"):
+    return {p.stem: load(p) for p in sorted(root.glob("*.json")) if not p.stem.startswith("profile")}
+
+
+def values():
+    """Every number the README prose uses, by name."""
+    v = {}
+    cv = cv_results()
+    for det, r in cv.items():
+        d = r["detection"]
+        v[f"{det}.map"] = f"{d['mAP50-95']['mean']:.3f}"
+        v[f"{det}.map_sd"] = f"{d['mAP50-95']['std']:.3f}"
+        for m in METHODS:
+            s = r["distance"][m]
+            v[f"{det}.{m}.mean"] = pct(s["all"]["absrel_mean"][0])
+            v[f"{det}.{m}.ci"] = ci(s["all"]["absrel_mean"])
+            v[f"{det}.{m}.median"] = pct(s["all"]["absrel_median"][0])
+            v[f"{det}.{m}.track"] = pct(s["all"]["absrel_track_mean"][0])
+            v[f"{det}.{m}.metres"] = f"{s['all']['abs_m_mean']:.1f}"
+            for c in kitti.CLASSES:
+                v[f"{det}.{m}.{c}"] = pct(s[c]["absrel_mean"][0])
+                v[f"{det}.{m}.{c}.whole"] = pct(s[f"{c} not truncated"]["absrel_mean"][0])
+                for b, name in zip(("0-10", "10-20", "20-40", "40"), metrics.BIN_NAMES):
+                    v[f"{det}.{m}.{c}.{b}"] = pct(s[f"{c} {name}"]["absrel_mean"][0]) if s[f"{c} {name}"].get("n") else "-"
         for c in kitti.CLASSES:
             rec = r["recall_by_distance"][c]
-            rows.append([k, c] + [f"{f / t:.0%} ({int(t)})" if t else "-" for f, t in zip(rec["found"], rec["total"])])
-    w(table(["Configuration", "Class", *metrics.BIN_NAMES], rows) + "\n\n")
+            v[f"{det}.recall.{c}.40"] = f"{rec['found'][3] / rec['total'][3]:.0%}"
+            v[f"{det}.recall.{c}.total40"] = f"{int(rec['total'][3])}"
+        v[f"{det}.n"] = f"{r['distance']['mlp']['all']['n']:,}"
+        v[f"{det}.tracks"] = f"{r['distance']['mlp']['all']['tracks']}"
+        v[f"{det}.floor.size.Car.whole"] = pct(r["distance_on_label_boxes"]["size"]["Car not truncated"]["absrel_mean"][0])
+    for name in ("finetuned_nms", "finetuned_e2e"):
+        p = RESULTS / "cv" / f"compare_coco_vs_{name}.json"
+        if p.exists():
+            c = load(p)
+            v[f"compare.{name}.n"] = f"{c['n_common']:,}"
+            for m in METHODS:
+                v[f"compare.{name}.{m}"] = "{:+.1f} [{:+.1f}, {:+.1f}]".format(*(x * 100 for x in c[m]["b - a"]))
+    lat = latency()
+    for k, r in lat.items():
+        for s in ("decode", "preprocess", "inference", "postprocess", "total"):
+            v[f"lat.{k}.{s}"] = f"{r[s]['median_ms'][0]:.1f}"
+        v[f"lat.{k}.fps"] = f"{np.mean(r['fps_per_round']):.0f}"
+    for head in ("e2e", "nms"):
+        p = RESULTS / "latency" / f"profile_{head}.json"
+        if p.exists():
+            r = load(p)
+            for dt in ("fp32", "fp16"):
+                for key, val in r[dt].items():
+                    if isinstance(val, float):
+                        v[f"profile.{head}.{dt}.{key}"] = f"{val:.2f}" if key != "gpu_busy_share" else pct(val, 0)
+                    elif isinstance(val, int):
+                        v[f"profile.{head}.{dt}.{key}"] = str(val)
+    return v
 
-    w("## Distance error (AbsRel = |Zhat - Z| / Z), mean with 95% cluster-bootstrap interval, median in brackets\n\n")
-    rows = []
-    for k, r in ev.items():
-        for m, name in METHODS.items():
-            d = r["distance"][m]
-            rows.append([k, name] + [f"{ci(d[g]['absrel_mean'])} ({d[g]['absrel_median'][0]:.1%})" if d[g].get("n") else "-"
-                                     for g in ("all", "Car", "Pedestrian", "Car not truncated", "Pedestrian not truncated")])
-    w(table(["Detector", "Method", "All", "Car", "Pedestrian", "Car, not truncated", "Pedestrian, not truncated"], rows)
-      + "\n\n")
 
-    w("## Distance error by distance bin (mean AbsRel)\n\n")
-    rows = []
-    for k, r in ev.items():
-        for m, name in METHODS.items():
-            d = r["distance"][m]
-            for c in kitti.CLASSES:
-                rows.append([k, name, c] + [f"{d[f'{c} {b}']['absrel_mean'][0]:.1%} (n={d[f'{c} {b}']['n']})"
-                                            if d[f"{c} {b}"].get("n") else "-" for b in metrics.BIN_NAMES])
-    w(table(["Detector", "Method", "Class", *metrics.BIN_NAMES], rows) + "\n\n")
-
-    w("## Paired differences between methods (mean AbsRel of the first minus the second, same objects)\n\n")
-    rows = []
-    for k, r in ev.items():
-        for pair, v in r["distance"]["paired_absrel_difference"].items():
-            rows.append([k, pair] + [f"{v[g][0] * 100:+.1f} [{v[g][1] * 100:+.1f}, {v[g][2] * 100:+.1f}]" for g in ("all", *kitti.CLASSES)])
-    w(table(["Detector", "Methods", "All (points)", "Car", "Pedestrian"], rows) + "\n\n")
-
-    w("## Geometric methods on the labelled boxes of the same objects (error floor with a perfect detector)\n\n")
-    rows = [[k, METHODS[m]] + [f"{r['distance_on_label_boxes'][m][g]['absrel_mean'][0]:.1%}" for g in ("all", *kitti.CLASSES)]
-            for k, r in ev.items() for m in ("size", "ground")]
-    w(table(["Objects matched by", "Method", "All", "Car", "Pedestrian"], rows) + "\n\n")
-
-    w("## Detector boxes vs labels: median IoU of matched boxes per split\n\n")
-    w(table(["Configuration", *kitti.SPLIT], [[k] + [f"{r['box_iou_median'][s]:.3f}" for s in kitti.SPLIT] for k, r in ev.items()])
-      + "\n\n")
-
-    if cmp:
-        w("## Detectors compared on the objects both found (mean AbsRel, second minus first)\n\n")
+def tables():
+    t = {}
+    cv = cv_results()
+    sel = RESULTS / "cv" / "selection.json"
+    if sel.exists():
+        s = load(sel)
+        configs = sorted({c for f in s["val_mAP50-95"].values() for c in f})
+        rows = [[f"fold {k}"] + [(f"**{f[c]:.3f}**" if s["chosen"][k] == c else f"{f[c]:.3f}") if c in f else "-" for c in configs]
+                for k, f in s["val_mAP50-95"].items()]
+        t["selection"] = table(["val mAP50-95", *[CONFIG_NAMES.get(c, c) for c in configs]], rows)
+    if cv:
         rows = []
-        for k, c in cmp.items():
-            for m, name in METHODS.items():
-                rows.append([k.removeprefix("compare_"), name, c["n_common"], f"{c[m]['a'][0]:.1%}", f"{c[m]['b'][0]:.1%}",
-                             f"{c[m]['b - a'][0] * 100:+.1f} [{c[m]['b - a'][1] * 100:+.1f}, {c[m]['b - a'][2] * 100:+.1f}]"])
-        w(table(["Comparison", "Method", "Objects", "First", "Second", "Difference (points)"], rows) + "\n\n")
-
+        for det, r in cv.items():
+            d = r["detection"]
+            rows.append([DETECTORS[det]] + [f"{d[m]['mean']:.3f} ± {d[m]['std']:.3f}" for m in ("Car AP50-95", "Pedestrian AP50-95", "mAP50-95", "mAP50")]
+                        + [" / ".join(f"{x:.3f}" for x in d["mAP50-95"]["per_fold"])])
+        t["detection"] = table(["Detector", "Car AP50-95", "Pedestrian AP50-95", "mAP50-95", "mAP50", "mAP50-95 per fold"], rows)
+        rows = []
+        for det, r in cv.items():
+            for c in kitti.CLASSES:
+                rec = r["recall_by_distance"][c]
+                rows.append([DETECTORS[det], c] + [f"{f / tt:.0%} ({int(tt)})" for f, tt in zip(rec["found"], rec["total"])])
+        t["recall"] = table(["Detector", "Class", *metrics.BIN_NAMES], rows)
+        rows = []
+        for det, r in cv.items():
+            for m, mname in METHODS.items():
+                s = r["distance"][m]
+                rows.append([DETECTORS[det], mname, ci(s["all"]["absrel_mean"]), pct(s["all"]["absrel_median"][0]),
+                             ci(s["all"]["absrel_track_mean"]), pct(s["Car not truncated"]["absrel_mean"][0]),
+                             pct(s["Pedestrian not truncated"]["absrel_mean"][0])])
+        t["distance"] = table(["Detector", "Method", "Mean AbsRel [95% CI]", "Median", "Per-object mean [95% CI]",
+                               "Cars not truncated", "Pedestrians not truncated"], rows)
+        rows = []
+        for det, r in cv.items():
+            for m, mname in METHODS.items():
+                s = r["distance"][m]
+                for c in kitti.CLASSES:
+                    rows.append([DETECTORS[det], mname, c] + [f"{pct(s[f'{c} {b}']['absrel_mean'][0])} ({s[f'{c} {b}']['n']})"
+                                                              if s[f"{c} {b}"].get("n") else "-" for b in metrics.BIN_NAMES])
+        t["bins"] = table(["Detector", "Method", "Class", *metrics.BIN_NAMES], rows)
+        rows = [[DETECTORS[det], METHODS[m]] + [pct(r["distance_on_label_boxes"][m][g]["absrel_mean"][0])
+                                                for g in ("all", "Car not truncated", "Pedestrian not truncated")]
+                for det, r in cv.items() for m in ("size", "ground")]
+        t["floor"] = table(["Objects found by", "Method on the label boxes", "All", "Cars not truncated", "Pedestrians not truncated"], rows)
+        rows = [[DETECTORS[det]] + [" / ".join(f"{f['box_iou_median'][p]:.3f}" for f in r["folds"]) for p in ("train", "val", "test")]
+                for det, r in cv.items()]
+        t["box_iou"] = table(["Detector", "train (folds 0/1/2)", "val", "test"], rows)
+    hyp = RESULTS / "cv" / "hypothesis_e.json"
+    if hyp.exists():
+        h = load(hyp)
+        t["hypothesis"] = table(["Fold 0", "val mAP50-95, NMS head", "val mAP50-95, NMS-free head",
+                                 "test mAP50-95, NMS head", "test mAP50-95, NMS-free head", "best epoch"],
+                                [[CONFIG_NAMES[c], *(f"{h[c][k]:.3f}" for k in ("val_nms", "val_e2e", "test_nms", "test_e2e")), h[c]["epoch"]]
+                                 for c in ("a", "e")])
+    lat = latency()
     if lat:
-        w("## Latency per frame on a Kaggle T4 (median ms over frames x rounds, 95% bootstrap interval of the median)\n\n")
         stages = ("read", "decode", "preprocess", "inference", "postprocess", "overhead", "distance", "total")
-        rows = [[k] + [f"{v[s]['median_ms'][0]:.1f}" for s in stages] + [f"{v['total']['median_ms'][1]:.1f}-{v['total']['median_ms'][2]:.1f}",
-                                                                          "/".join(f"{x:.0f}" for x in v["fps_per_round"])]
-                for k, v in lat.items()]
-        w(table(["Configuration", *stages, "total CI", "FPS per round"], rows) + "\n")
+        t["latency"] = table(["Configuration", *stages, "total 95% CI", "FPS per round"],
+                             [[k] + [f"{r[s]['median_ms'][0]:.1f}" for s in stages]
+                              + [f"{r['total']['median_ms'][1]:.1f}-{r['total']['median_ms'][2]:.1f}", "/".join(f"{x:.0f}" for x in r["fps_per_round"])]
+                              for k, r in lat.items()])
+    return t
+
+
+def render(template):
+    v, t = values(), tables()
+
+    def sub(m):
+        key = m.group(1)
+        if key.startswith("table:"):
+            return t[key[6:]]
+        return v[key]
+    return re.sub(r"\{([a-z0-9_.:\-A-Z]+)\}", sub, template)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--write", action="store_true")
+    g.add_argument("--check", action="store_true")
+    g.add_argument("--summary", action="store_true")
+    args = ap.parse_args()
+    if args.summary:
+        print("\n\n".join(f"## {k}\n\n{v}" for k, v in tables().items()))
+        return
+    readme = render(Path("README.template.md").read_text())
+    if args.write:
+        Path("README.md").write_text(readme)
+    elif Path("README.md").read_text() != readme:
+        sys.exit("README.md does not match README.template.md and results/: run python -m monodist.report --write")
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    main()
