@@ -21,8 +21,9 @@ Read them in order; each notebook only uses concepts introduced earlier.
 ## Setup
 
 This branch is checked out as a worktree inside the main checkout, so `..` is the project root:
-the notebooks import `monodist`, read `../data/kitti_tracking` (labels, calibration and the images
-of sequence 0012) and `../results/`.
+the notebooks import `monodist` and read `../data/kitti_tracking` and `../results/`. The labels and
+calibration are in the main repository; notebooks 00, 03 and 06 also need the 78 images of
+sequence 0012, downloaded with the loop in `../data/kitti_tracking/README.md`.
 
 ```bash
 git clone git@github.com:geminitt/monodist.git && cd monodist
