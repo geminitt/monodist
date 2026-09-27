@@ -1,6 +1,6 @@
 """Evaluate detectors and the three distance methods on the test sequences; write one JSON per run.
 
-    python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_1280 --det results/det/ft_1280
+    python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_1280 results/det/ft_1280
 
 Everything here runs on CPU from saved detections: fitting the geometric constants on the train labels,
 training the distance MLP on this detector's boxes on the train sequences, and scoring on the test sequences.
