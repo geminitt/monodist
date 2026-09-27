@@ -16,3 +16,13 @@ def test_mlp_learns_the_pinhole_relation():
     pred = mlp.predict(model, x[3000:])
     assert np.median(np.abs(pred - z[3000:]) / z[3000:]) < 0.05
     assert 1 <= epochs <= 60 and len(curve) == 60
+
+
+def test_ensemble_prediction_is_the_geometric_mean():
+    rng = np.random.default_rng(1)
+    x = rng.normal(size=(200, 3))
+    z = np.exp(x[:, 0] * 0.3 + 3)
+    models, _, _ = mlp.train(x, z, np.arange(200) % 2, max_epochs=5, n_models=3)
+    assert len(models) == 3
+    each = np.array([mlp.predict(m, x) for m in models])
+    assert np.allclose(mlp.predict(models, x), np.exp(np.log(each).mean(0)), rtol=1e-5)

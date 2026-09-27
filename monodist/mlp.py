@@ -45,13 +45,17 @@ def predict_log(model, x):
 
 
 def predict(model, x):
-    return np.exp(predict_log(model, x))
+    """Z from one model or from an ensemble (list of models; their log Z predictions are averaged)."""
+    models = model if isinstance(model, list) else [model]
+    return np.exp(np.mean([predict_log(m, x) for m in models], axis=0))
 
 
-def train(x, z, groups, max_epochs=150, seed=0):
+def train(x, z, groups, max_epochs=150, seed=0, n_models=5):
     """Pick the epoch count by leave-one-group-out (groups = sequences), then refit on everything.
 
-    Returns the model, the chosen epoch count and the mean held-out L1 curve (in log Z).
+    The refit is an ensemble of n_models seeds: one small MLP moves by about a point of AbsRel from seed to seed,
+    which is the size of the differences being measured. Returns the ensemble (a list), the chosen epoch count
+    and the mean held-out L1 curve (in log Z).
     """
     torch.set_num_threads(2)  # a 5k-parameter model gains nothing from more threads
     logz = np.log(z)
@@ -62,5 +66,5 @@ def train(x, z, groups, max_epochs=150, seed=0):
         curves.append(curve)
     mean_curve = np.mean(curves, axis=0)
     best = int(np.argmin(mean_curve)) + 1
-    model, _ = _fit(x, logz, best, seed)
-    return model, best, mean_curve
+    models = [_fit(x, logz, best, seed + k)[0] for k in range(n_models)]
+    return models, best, mean_curve
