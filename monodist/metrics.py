@@ -46,11 +46,16 @@ def summarize(pred, true, clusters, n_boot=2000):
     e = abs_rel(pred, true)
     mean = cluster_bootstrap(e, clusters, np.mean, n_boot)
     med = cluster_bootstrap(e, clusters, np.median, n_boot)
+    ids, inv = np.unique(clusters, return_inverse=True)
+    per_track = np.bincount(inv, weights=e) / np.bincount(inv)
+    track_mean = cluster_bootstrap(per_track, ids, np.mean, n_boot)
     return {
         "n": int(len(e)),
-        "tracks": int(len(np.unique(clusters))),
+        "tracks": int(len(ids)),
         "absrel_mean": [float(v) for v in mean],
         "absrel_median": [float(v) for v in med],
+        # every tracked object weighs the same, however many frames it appears in
+        "absrel_track_mean": [float(v) for v in track_mean],
         "abs_m_mean": float(np.mean(np.abs(pred - true))),
     }
 

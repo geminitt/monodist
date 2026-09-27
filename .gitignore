@@ -13,5 +13,5 @@ runs/
 *.pt
 *.engine
 *.onnx
-kaggle/*/build/
+kaggle/*/build*/
 notes/

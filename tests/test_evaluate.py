@@ -21,7 +21,8 @@ def test_perfect_detector_end_to_end(root, tmp_path):
     const = evaluate.constants(root)
     assert 1.4 < const["class_height"][0] < 1.7 and 1.6 < const["class_height"][1] < 1.9
     assert 1.4 < const["cam_height"] < 1.8
-    res, rows = evaluate.run(root, tmp_path / "oracle", const, n_boot=20, mlp_epochs=15)
+    res, rows = evaluate.run(root, tmp_path / "oracle", n_boot=20, mlp_epochs=15)
+    assert res["constants"] == const
     assert res["detection"]["mAP50-95"] > 0.999
     rec = res["recall_by_distance"]["Car"]
     assert sum(rec["found"]) == sum(rec["total"]) > 0
@@ -36,11 +37,10 @@ def test_perfect_detector_end_to_end(root, tmp_path):
 
 
 def test_compare_on_common_objects(root, tmp_path):
-    const = evaluate.constants(root)
     oracle_detections(root, tmp_path / "a")
     oracle_detections(root, tmp_path / "b", jitter=2.0)
-    _, ra = evaluate.run(root, tmp_path / "a", const, n_boot=20, mlp_epochs=15)
-    _, rb = evaluate.run(root, tmp_path / "b", const, n_boot=20, mlp_epochs=15)
+    _, ra = evaluate.run(root, tmp_path / "a", n_boot=20, mlp_epochs=15)
+    _, rb = evaluate.run(root, tmp_path / "b", n_boot=20, mlp_epochs=15)
     c = evaluate.compare(ra, rb, n_boot=20)
     assert c["n_common"] > 0.8 * len(ra["z"])
     assert c["size"]["b - a"][0] > 0  # jittered boxes give worse known-size distances

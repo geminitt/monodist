@@ -22,7 +22,7 @@ COCO_TO_KITTI = {2: 0, 0: 1}  # COCO car -> Car, COCO person -> Pedestrian
 
 def detect_sequence(model, root, seq, imgsz, half, conf, coco, batch, frames=None, nms=False):
     paths = [str(kitti.image_path(root, seq, f)) for f in range(frames or kitti.FRAMES[seq])]
-    classes = list(COCO_TO_KITTI) if coco else None
+    classes = list(COCO_TO_KITTI) if coco else [0, 1]  # a model fine-tuned with Van / Cyclist: keep Car, Pedestrian
     rows = {"frame": [], "box": [], "score": [], "cls": []}
     shape = None
     for i in range(0, len(paths), batch):

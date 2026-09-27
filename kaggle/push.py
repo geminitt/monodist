@@ -1,8 +1,10 @@
 """Inline common.py into a kernel script, pin the commit, and push it with the kaggle CLI.
 
     python kaggle/push.py finetune --mode smoke --commit <sha>
+    python kaggle/push.py cv --job f0-a --set FOLD=0 'CONFIG="a"'   # one kernel per job, so jobs run in parallel
 """
 import argparse
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -14,6 +16,7 @@ ap.add_argument("kernel")
 ap.add_argument("--mode", default=None)
 ap.add_argument("--commit", default=None, help="defaults to the current HEAD, which must be pushed")
 ap.add_argument("--set", nargs="*", default=[], help="NAME=VALUE overrides of top-level constants")
+ap.add_argument("--job", default=None, help="suffix of a separate kernel, e.g. f0-a: runs in parallel with others")
 args = ap.parse_args()
 
 commit = args.commit or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -33,5 +36,12 @@ for kv in args.set:
 build = HERE / args.kernel / "build"
 build.mkdir(exist_ok=True)
 (build / "run.py").write_text(src)
-(build / "kernel-metadata.json").write_text((HERE / args.kernel / "kernel-metadata.json").read_text())
+meta = json.loads((HERE / args.kernel / "kernel-metadata.json").read_text())
+if args.job:
+    meta["id"] += f"-{args.job}"
+    meta["title"] += f" {args.job.replace('-', ' ')}"
+    build = HERE / args.kernel / f"build-{args.job}"
+    build.mkdir(exist_ok=True)
+    (build / "run.py").write_text(src)
+(build / "kernel-metadata.json").write_text(json.dumps(meta, indent=1))
 subprocess.run(["kaggle", "kernels", "push", "-p", str(build)], check=True)

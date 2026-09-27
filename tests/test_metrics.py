@@ -44,3 +44,10 @@ def test_latency_bootstrap_median_and_imgsz_parsing():
     m, lo, hi = bootstrap_median(np.arange(101, dtype=float))
     assert m == 50 and lo < 50 < hi
     assert parse_imgsz("1280") == 1280 and parse_imgsz("416,1280") == [416, 1280]
+
+
+def test_track_mean_weighs_each_object_once():
+    z = np.full(4, 10.0)
+    pred = np.array([11.0, 11.0, 11.0, 15.0])            # track a: 3 frames at 10%, track b: 1 frame at 50%
+    out = metrics.summarize(pred, z, np.array(["a", "a", "a", "b"]), n_boot=50)
+    assert np.isclose(out["absrel_mean"][0], 0.2) and np.isclose(out["absrel_track_mean"][0], 0.3)

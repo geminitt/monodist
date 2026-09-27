@@ -47,3 +47,11 @@ def test_depth_in_camera2_is_label_z_plus_tiny_offset(root):
     P2 = kitti.load_calib(root, "0000")
     z2 = kitti.to_camera2(lab["loc"], P2)[:, 2]
     assert np.allclose(z2 - lab["loc"][:, 2], kitti.intrinsics(P2)["t"][2]) and abs(kitti.intrinsics(P2)["t"][2]) < 0.01
+
+
+def test_folds_partition_the_sequences():
+    tests = [s for f in kitti.FOLDS for s in f["test"]]
+    assert sorted(tests) == kitti.SEQUENCES  # every sequence is test exactly once
+    for f in kitti.FOLDS:
+        parts = f["train"] + f["val"] + f["test"]
+        assert sorted(parts) == kitti.SEQUENCES and len(set(parts)) == 21

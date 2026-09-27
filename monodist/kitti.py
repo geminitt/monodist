@@ -11,7 +11,22 @@ SPLIT = {
     "test": ["0000", "0002", "0007", "0010", "0012", "0014", "0015", "0017"],
 }
 SEQUENCES = sorted(s for seqs in SPLIT.values() for s in seqs)
+# Three-fold cross-validation by sequence: every sequence is test exactly once. Folds balance cars (instances and
+# tracks) and pedestrian tracks; pedestrian instances cannot be balanced, sequence 0019 alone holds 53% of them.
+# Within each fold the non-test sequences split about 70/30 into train and val the same way.
+FOLDS = [
+    {"test": ["0002", "0006", "0007", "0009", "0012", "0013", "0014", "0017", "0018"],
+     "val": ["0001", "0008", "0015", "0016"],
+     "train": ["0000", "0003", "0004", "0005", "0010", "0011", "0019", "0020"]},
+    {"test": ["0003", "0005", "0008", "0019", "0020"],
+     "val": ["0000", "0004", "0006", "0007", "0010", "0015", "0017"],
+     "train": ["0001", "0002", "0009", "0011", "0012", "0013", "0014", "0016", "0018"]},
+    {"test": ["0000", "0001", "0004", "0010", "0011", "0015", "0016"],
+     "val": ["0002", "0003", "0005", "0006", "0008", "0013", "0018"],
+     "train": ["0007", "0009", "0012", "0014", "0017", "0019", "0020"]},
+]
 CLASSES = ("Car", "Pedestrian")
+EXTRA_CLASSES = ("Van", "Cyclist")  # optionally labelled when fine-tuning; never evaluated
 # A detection on a neighbouring class counts neither as a hit nor as a false alarm (as in the KITTI devkit).
 NEIGHBOURS = {"Van": "Car", "Person": "Pedestrian"}
 
