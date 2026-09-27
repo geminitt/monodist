@@ -67,6 +67,8 @@ def breakdown(preds, pairs, n_boot):
         for c, cname in enumerate(kitti.CLASSES):
             m = pairs["cls"] == c
             out[name][cname] = metrics.summarize(p[m], z[m], clusters[m], n_boot)
+            whole = m & (pairs["trunc"] == 0)  # not cut by the image border (KITTI truncation level 0)
+            out[name][f"{cname} not truncated"] = metrics.summarize(p[whole], z[whole], clusters[whole], n_boot)
             for k, bname in enumerate(metrics.BIN_NAMES):
                 mb = m & (b == k)
                 out[name][f"{cname} {bname}"] = metrics.summarize(p[mb], z[mb], clusters[mb], n_boot)
@@ -91,6 +93,8 @@ def subset(d, seqs):
 def run(root, det_dir, const, n_boot=2000, seed=0, mlp_epochs=150):
     det, sizes = merge(det_dir)
     seqs = kitti.SEQUENCES
+    missing = sorted(set(seqs) - set(sizes))
+    assert not missing, f"{det_dir}: no detections for sequences {missing} (all 21 are needed)"
     det = subset(det, seqs)
     cam = camera(root, seqs, sizes)
     gt = match.ground_truth(root, seqs)
