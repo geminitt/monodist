@@ -114,13 +114,14 @@ What the table says:
    cars between 10 and 20 m (5.4% vs 9.5%) and handles truncated boxes far better (17.6% vs 73.7% for cars
    closer than 10 m, most of which are cut by the border).
 2. **The known-size formula has a floor of about 9% on cars, even with perfect boxes.** KITTI measures depth
-   to the centre of the car, but a 2D box encloses the whole car, so its height is set by the nearest face:
-   for a car seen from behind Zhat is about z - l/2, a relative error of about l / (2z), 8% at 25 m for a
-   4 m car. On the labelled boxes themselves the formula scores 8.9% on untruncated cars. A detector whose
-   boxes look *more* like the labels makes this formula *worse*: 9.8% after fine-tuning against 7.9% with
-   the COCO weights.
-3. **The flat-road formula does not hold on KITTI.** The labelled ground points of cars lie between 1.36 and
-   1.79 m below the camera (interquartile range), because of slopes and pitch; pedestrians stand about 15 cm
+   to the centre of the car, but a 2D box encloses the whole car: its bottom edge comes from the nearest face
+   and its top edge from the farthest part of the roof. For a car seen from behind, with the ground y metres
+   below the camera, Zhat / z is about 1 / (1 + (l / 2z)(2y - H) / H): about 10% low at 25 m for a 4.3 m car,
+   which matches the labels (study notes, notebook 01). On the labelled boxes themselves the formula scores
+   8.9% on untruncated cars. A detector whose boxes look *more* like the labels makes this formula *worse*:
+   9.8% after fine-tuning against 7.9% with the COCO weights.
+3. **The flat-road formula does not hold on KITTI.** The labelled ground points of cars lie between 1.38 and
+   1.80 m below the camera (interquartile range), because of slopes and pitch; pedestrians stand about 16 cm
    higher, on the pavement; and the bottom edge of a car box is its nearest corner, not its centre. Beyond
    20 m, where the bottom edge is only a few pixels below the horizon, these errors dominate.
 4. **Fine-tuning helps detection, not distance.** It raises mAP50-95 by 6.4 points (with NMS), mostly through
