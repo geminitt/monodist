@@ -1,0 +1,274 @@
+### MD
+# 03 — YOLO26 bên trong: dự đoán dày đặc, NMS, đầu ra một-một, fine-tune
+
+Notebook 02 chấm bộ nhận diện như một hộp đen. Notebook này mở hộp ra ở đúng những chỗ dự án
+chạm tới: mạng đưa ra bao nhiêu dự đoán, vì sao cần NMS, đầu ra "không cần NMS" của YOLO26 làm
+gì khác, và fine-tune đã thay đổi những gì. Code chạy mạng YOLO26n trên **CPU với một ảnh**, nên
+nhẹ.
+
+| Mục | Câu hỏi |
+|---|---|
+| 1. Dự đoán dày đặc | Vì sao mạng trả về đúng 10.920 dự đoán cho một ảnh KITTI? |
+| 2. Vì sao có trùng lặp | Một chiếc xe sinh ra bao nhiêu dự đoán? |
+| 3. NMS | Thuật toán, tự cài và so với thư viện |
+| 4. Đầu ra một-một | YOLO26 bỏ NMS bằng cách nào? |
+| 5. Fine-tune | Học chuyển giao, dừng sớm, chọn epoch |
+| 6. Dấu hiệu quá khớp | Khung trên ảnh đã học có khít hơn ảnh mới không? |
+| 7. Đầu ra một-một sau fine-tune | Vì sao nó thua đầu ra có NMS? |
+
+### CODE
+import json
+from pathlib import Path
+
+import numpy as np
+import torch
+import cv2
+import matplotlib.pyplot as plt
+from ultralytics import YOLO
+from ultralytics.data.augment import LetterBox
+from torchvision.ops import nms as torchvision_nms
+
+from monodist import kitti
+from monodist.detect import merge
+
+torch.set_num_threads(4)
+ROOT = Path("../data/kitti_tracking")
+plt.rcParams.update({"figure.figsize": (9, 3.2), "figure.dpi": 110})
+
+model = YOLO("../weights/yolo26n.pt")           # COCO weights, 80 classes
+net = model.model.eval()
+head = net.model[-1]
+img = cv2.imread(str(kitti.image_path(ROOT, "0012", 0)))
+print("image", img.shape, "| parameters", sum(p.numel() for p in net.parameters()))
+
+### MD
+## 1. Dự đoán dày đặc
+
+**Ý tưởng của bộ nhận diện một giai đoạn.** Mạng tích chập biến ảnh thành vài **bản đồ đặc
+trưng** nhỏ dần. Mỗi ô của mỗi bản đồ ứng với một vùng ảnh và **tự dự đoán**: một khung bao và
+một điểm cho từng lớp. Không có bước "đề xuất vùng" riêng như các bộ nhận diện hai giai đoạn
+đời cũ; mọi ô dự đoán song song trong một lần chạy mạng.
+
+YOLO26 dùng ba bản đồ với **bước nhảy** (stride) 8, 16 và 32 pixel: bản đồ bước 8 có ô nhỏ,
+hợp với vật nhỏ; bước 32 hợp với vật lớn.
+
+**Ký hiệu mới**
+- **stride** $s$: một ô của bản đồ ứng với $s \times s$ pixel của ảnh đầu vào
+
+**Số dự đoán.** Ảnh KITTI $1242\times375$ được co theo cạnh dài về 1280, thành $1280 \times 387$,
+rồi đệm thêm lên $1280\times416$ cho chia hết 32 (kỹ thuật **letterbox**: co giữ tỉ lệ, phần
+thiếu tô màu xám). Số ô:
+
+$$\frac{1280}{8}\cdot\frac{416}{8} + \frac{1280}{16}\cdot\frac{416}{16} + \frac{1280}{32}\cdot\frac{416}{32}
+= 160\cdot52 + 80\cdot26 + 40\cdot13 = 8320 + 2080 + 520 = 10\,920.$$
+
+Chạy mạng và kiểm tra:
+
+### CODE
+lb = LetterBox((416, 1280), auto=False)(image=img)
+x = torch.from_numpy(lb[:, :, ::-1].copy()).permute(2, 0, 1)[None].float() / 255
+scale = min(1280 / img.shape[1], 416 / img.shape[0])
+pad_top = (416 - round(img.shape[0] * scale)) / 2
+print("strides:", head.stride.tolist(), "| letterbox scale %.4f, top padding %.1f px" % (scale, pad_top))
+
+head.end2end = False                              # the one-to-many head: every cell predicts
+with torch.no_grad():
+    raw = net(x)[0][0]                            # (4 + 80, cells)
+print("raw output", tuple(raw.shape), "-> 4 box numbers + 80 class scores for each of", raw.shape[1], "cells")
+
+car_score = raw[4 + 2].numpy()                    # COCO class 2 = car
+grid8 = car_score[:160 * 52].reshape(52, 160)     # the first 8,320 cells are the stride-8 map
+fig, axes = plt.subplots(1, 2, figsize=(12, 2.6))
+axes[0].imshow(lb[:, :, ::-1]); axes[0].set_title("letterboxed input 1280 x 416"); axes[0].axis("off")
+axes[1].imshow(grid8, cmap="magma"); axes[1].set_title("car score of each stride-8 cell (160 x 52)"); axes[1].axis("off")
+plt.show()
+
+### MD
+## 2. Vì sao có trùng lặp
+
+Nhìn bản đồ điểm: quanh mỗi chiếc xe có **cả một cụm ô** cùng sáng. Các ô cạnh nhau nhìn thấy
+gần như cùng một vùng ảnh, nên cùng tự tin rằng ở đó có xe, và mỗi ô dự đoán một khung hơi
+khác nhau. Đếm số dự đoán "car" có điểm trên 0,25:
+
+### CODE
+xywh = raw[:4].T.numpy()
+boxes = np.c_[xywh[:, 0] - xywh[:, 2] / 2, xywh[:, 1] - xywh[:, 3] / 2,
+              xywh[:, 0] + xywh[:, 2] / 2, xywh[:, 1] + xywh[:, 3] / 2]      # centre/size -> corners
+keep = car_score > 0.25
+cand_box, cand_score = boxes[keep], car_score[keep]
+print(f"{keep.sum()} cells say 'car' with score > 0.25; the frame has 2 labelled cars and 2 small cars in a DontCare region")
+
+### MD
+## 3. NMS
+
+**Định nghĩa.** Non-maximum suppression (triệt tiêu điểm không cực đại) giữ lại, trong mỗi cụm
+khung chồng nhau, khung có điểm cao nhất:
+
+1. Xếp các khung theo điểm giảm dần.
+2. Lấy khung đầu danh sách, đưa vào kết quả.
+3. Xoá khỏi danh sách mọi khung có IoU với nó vượt ngưỡng (Ultralytics dùng 0,7).
+4. Lặp lại từ bước 2 đến khi danh sách rỗng.
+
+**Chi phí.** Mỗi vòng so một khung với mọi khung còn lại, nên trường hợp xấu là $O(n^2)$ với $n$
+khung ứng viên. Nó chạy **ngoài mạng nơ-ron**, sau khi mạng xong. Ở notebook 06 bước này tốn
+khoảng 1 ms trên T4.
+
+**Ký hiệu mới**
+- $O(n^2)$: số phép tính tăng theo bình phương số khung ứng viên
+
+Tự cài bằng numpy và so với `torchvision.ops.nms`:
+
+### CODE
+def nms(box, score, iou_threshold=0.7):
+    order = np.argsort(-score)
+    kept = []
+    while len(order):
+        i, rest = order[0], order[1:]
+        kept.append(i)
+        ix = np.clip(np.minimum(box[i, 2], box[rest, 2]) - np.maximum(box[i, 0], box[rest, 0]), 0, None)
+        iy = np.clip(np.minimum(box[i, 3], box[rest, 3]) - np.maximum(box[i, 1], box[rest, 1]), 0, None)
+        inter = ix * iy
+        area = lambda b: (b[..., 2] - b[..., 0]) * (b[..., 3] - b[..., 1])
+        order = rest[inter / (area(box[i]) + area(box[rest]) - inter) <= iou_threshold]
+    return np.array(kept)
+
+mine = nms(cand_box, cand_score)
+ref = torchvision_nms(torch.tensor(cand_box), torch.tensor(cand_score), 0.7).numpy()
+print("kept by my NMS:", mine.tolist(), "| by torchvision:", ref.tolist(), "| identical:", np.array_equal(mine, ref))
+
+# back from the letterboxed 1280 x 416 input to the original image, then compare with Ultralytics' own pipeline
+to_image = lambda b: np.c_[b[:, 0] / scale, (b[:, 1] - pad_top) / scale, b[:, 2] / scale, (b[:, 3] - pad_top) / scale]
+r = model.predict(img, imgsz=(416, 1280), conf=0.25, classes=[2], nms=None, verbose=False)[0]
+print("my NMS, image coordinates:\n", np.round(to_image(cand_box[mine]), 1), np.round(cand_score[mine], 3))
+print("Ultralytics predict (nms=None):\n", np.round(r.boxes.xyxy.numpy(), 1), np.round(r.boxes.conf.numpy(), 3))
+
+### MD
+Hai mươi mốt ứng viên co lại còn ba khung, **trùng khớp hoàn toàn** với kết quả của Ultralytics
+sau khi đổi toạ độ từ ảnh letterbox về ảnh gốc (chia cho hệ số co, trừ phần đệm phía trên).
+
+## 4. Đầu ra một-một: YOLO26 bỏ NMS bằng cách nào
+
+Trùng lặp sinh ra từ **cách huấn luyện**. Khi học, mỗi vật thật được gán cho **nhiều** ô
+(gán một-nhiều, one-to-many): nhiều ô cùng được dạy "ở đây có xe". Cách này cho nhiều tín hiệu
+học, nhưng dạy mạng sinh trùng lặp, nên cần NMS.
+
+YOLO26 (theo ý tưởng của YOLOv10) có **thêm một đầu ra** huấn luyện bằng gán **một-một**
+(one-to-one): mỗi vật chỉ được gán cho **đúng một** ô tốt nhất, mọi ô khác bị dạy là "không có
+gì". Đầu ra này học được cách tự không trùng lặp, nên khi dùng nó thì bỏ được NMS, và kết quả là
+tối đa 300 khung đã sắp xếp. Hai đầu ra dùng chung thân mạng và được huấn luyện cùng lúc.
+
+### CODE
+head.end2end = True
+with torch.no_grad():
+    top = net(x)[0][0].numpy()                    # (300, 6): x1, y1, x2, y2, score, class
+cars = top[(top[:, 5] == 2) & (top[:, 4] > 0.25)]
+print("one-to-one head, output", top.shape, "-> cars above 0.25, image coordinates:")
+print(np.round(to_image(cars[:, :4]), 1), np.round(cars[:, 4], 3))
+
+### MD
+Cùng ba chiếc xe, không cần NMS, nhưng **điểm khác** (0,92; 0,47; 0,32 so với 0,82; 0,59; 0,31):
+hai đầu ra là hai bộ tham số khác nhau. Với trọng số COCO, hai đầu ra cho mAP gần như bằng nhau
+trên KITTI (0,413 và 0,414).
+
+**Ký hiệu mới**
+- **end-to-end** (đầu cuối): dự đoán cuối cùng ra thẳng từ mạng, không qua bước hậu xử lý như NMS
+
+## 5. Fine-tune
+
+**Học chuyển giao (transfer learning).** Mạng đã học trên COCO (khoảng 118 nghìn ảnh, 80 lớp)
+biết sẵn cạnh, hình dạng, bánh xe, dáng người. Thay vì học lại từ đầu, ta khởi tạo từ trọng số
+đó rồi **huấn luyện tiếp trên dữ liệu đích** (KITTI). Dự án fine-tune **toàn bộ** khoảng 2,6
+triệu tham số (ô code đầu notebook đếm cả hai đầu ra; đầu ra một-một chiếm 0,15 triệu; con số 2,4
+triệu của nhà phát triển là mạng đã bỏ một đầu ra và gộp lớp batch norm vào lớp tích chập), không đóng băng lớp nào, vì mạng đủ nhỏ để bộ nhớ không phải là vấn đề.
+
+Những gì thay đổi so với lúc huấn luyện trên COCO:
+- **Lớp đầu ra**: 80 lớp thành 2 (Car, Pedestrian). Phần dự đoán lớp được khởi tạo lại; phần còn
+  lại giữ trọng số COCO.
+- **Ảnh**: 4.512 khung của 8 chuỗi train, kích thước 1280, tăng cường dữ liệu mặc định của
+  Ultralytics (ghép 4 ảnh thành một, lật ngang, đổi màu).
+
+**Dừng sớm và chọn epoch.** Sau mỗi epoch, Ultralytics chấm trên **tập val** và giữ bản có
+**fitness** cao nhất, với fitness $= 0{,}1\cdot\text{mAP}_{50} + 0{,}9\cdot\text{mAP}_{50\text{–}95}$.
+Nếu 10 epoch liền không cải thiện thì dừng (patience = 10).
+
+**Ký hiệu mới**
+- **epoch**: một lượt đi qua toàn bộ ảnh train · **patience**: số epoch chờ trước khi dừng sớm
+
+### CODE
+import csv
+rows = list(csv.DictReader(open("../results/finetune/results.csv")))
+ep = [int(r["epoch"]) for r in rows]
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.2))
+axes[0].plot(ep, [float(r["train/box_loss"]) for r in rows], marker="o", label="train box loss")
+axes[0].plot(ep, [float(r["val/box_loss"]) for r in rows], marker="o", label="val box loss")
+axes[0].set_xlabel("epoch"); axes[0].legend()
+axes[1].plot(ep, [float(r["metrics/mAP50-95(B)"]) for r in rows], marker="o", label="val mAP50-95")
+axes[1].plot(ep, [float(r["metrics/mAP50(B)"]) for r in rows], marker="o", label="val mAP50")
+axes[1].set_xlabel("epoch"); axes[1].legend()
+plt.tight_layout(); plt.show()
+best = max(rows, key=lambda r: 0.1 * float(r["metrics/mAP50(B)"]) + 0.9 * float(r["metrics/mAP50-95(B)"]))
+print("best epoch by fitness:", best["epoch"], "| val mAP50-95 %.3f" % float(best["metrics/mAP50-95(B)"]))
+args = open("../results/finetune/args.yaml").read()
+print("validation during training used nms:", [l for l in args.splitlines() if l.startswith("nms:")])
+
+### MD
+Hai điều đáng chú ý:
+- **Loss train giảm đều, loss val và mAP val đi ngang ngay từ epoch 1.** Mạng đã thích nghi với
+  KITTI gần như ngay lập tức; các epoch sau chủ yếu học thuộc tập train. Epoch tốt nhất là 4,
+  dừng ở 14.
+- Khi chấm val trong lúc huấn luyện, Ultralytics dùng `nms: null`, tức **đầu ra một-nhiều cộng
+  NMS**. Epoch được chọn là epoch tốt nhất cho đầu ra *đó*; không có gì chọn cho đầu ra một-một.
+
+## 6. Dấu hiệu quá khớp: khung khít hơn trên ảnh đã học
+
+Một bộ nhận diện đã thấy ảnh train thì trên chính những ảnh đó khung của nó khít hơn thực tế.
+Điều này quan trọng vì mạng đo khoảng cách (notebook 04) học trên khung của bộ nhận diện trên
+tập train. Đo IoU trung vị giữa khung dự đoán và khung nhãn của những vật được ghép:
+
+### CODE
+for c in ("coco_1280", "ft_1280_nms"):
+    r = json.loads(Path(f"../results/eval/{c}.json").read_text())["box_iou_median"]
+    print(f"{c:12s} median IoU  train {r['train']:.3f}  val {r['val']:.3f}  test {r['test']:.3f}")
+
+### MD
+- Bộ nhận diện COCO chưa từng thấy KITTI: ba tập ngang nhau (khoảng 0,81).
+- Bản fine-tune khít hơn hẳn ở mọi tập (0,85–0,88), và trên **tập train** khít hơn tập test khoảng
+  1,5 điểm. Có quá khớp, nhưng nhỏ. Đó là lý do dự án vẫn huấn luyện mạng khoảng cách trên tập
+  train (nhiều dữ liệu hơn tập val) và ghi lại con số này để người đọc tự đánh giá.
+
+## 7. Đầu ra một-một sau fine-tune
+
+Với trọng số COCO, hai đầu ra ngang nhau. Sau fine-tune thì không:
+
+### CODE
+for c in ("coco_1280", "coco_1280_nms", "ft_1280", "ft_1280_nms"):
+    r = json.loads(Path(f"../results/eval/{c}.json").read_text())
+    det, sizes = merge(f"../results/det/{c}")
+    m = np.isin(det["seq"], kitti.SPLIT["test"]) & (det["score"] >= r["conf"]["Car"])
+    H = np.array([sizes[s][0] for s in det["seq"][m]])
+    at_bottom = np.mean(det["box"][m, 3] >= H - 2)
+    print(f"{c:14s} mAP50-95 {r['detection']['mAP50-95']:.3f} | kept boxes touching the bottom edge: {at_bottom:5.1%}")
+labels = np.concatenate([kitti.load_labels(ROOT, s)["box"][np.isin(kitti.load_labels(ROOT, s)["type"], kitti.CLASSES)]
+                         for s in kitti.SPLIT["test"]])
+print(f"labels touching the bottom edge: {np.mean(labels[:, 3] >= 373):.1%}")
+
+### MD
+- Bản fine-tune dùng NMS đạt 0,477; đầu ra một-một của chính nó chỉ 0,451.
+- Đầu ra một-một kéo gần **10%** khung chạm mép dưới ảnh, trong khi nhãn chỉ có 6% và đầu ra có
+  NMS chỉ 1%. Khung bị kéo dài xuống mép dưới làm hỏng cả chiều cao khung (công thức kích thước)
+  lẫn cạnh dưới (công thức mặt phẳng sàn).
+- Giải thích hợp lý nhất: epoch 4 được chọn cho đầu ra một-nhiều (mục 5), và bốn epoch chưa đủ
+  để đầu ra một-một, vốn nhận ít tín hiệu học hơn (mỗi vật chỉ một ô), thích nghi xong. Dự án
+  **chưa kiểm chứng** giả thuyết này; cách kiểm là huấn luyện lâu hơn, hoặc chọn epoch theo điểm
+  của đầu ra một-một, rồi đo lại.
+
+Hệ quả thực tế: sau fine-tune nên dùng đầu ra có NMS. NMS chỉ tốn khoảng 1 ms (notebook 06).
+
+## Tóm tắt
+
+- YOLO26 dự đoán **dày đặc**: 10.920 ô ở ba bước nhảy 8, 16, 32 cho một ảnh $1280\times416$; mỗi ô ra một khung và 80 điểm lớp.
+- Gán một-nhiều khi học sinh ra trùng lặp (21 ứng viên cho 3 xe); **NMS** giữ khung điểm cao nhất
+  mỗi cụm. Bản tự cài khớp torchvision và Ultralytics.
+- Đầu ra **một-một** học cách không trùng lặp nên bỏ được NMS; với trọng số COCO nó ngang đầu ra có NMS.
+- Fine-tune toàn bộ từ trọng số COCO: mAP val đi ngang ngay từ epoch 1, epoch 4 được chọn theo đầu ra có NMS.
+- Sau fine-tune, đầu ra một-một thua (0,451 so với 0,477) và kéo nhiều khung chạm mép dưới; nguyên nhân chưa kiểm chứng.

@@ -1,0 +1,246 @@
+### MD
+# 05 — Thống kê cho kết quả: khoảng tin cậy, bootstrap theo cụm, so sánh cặp
+
+README ghi "MLP: 7,9% [6,7; 9,3]". Con số trong ngoặc là một **khoảng tin cậy 95%**, tính bằng
+**bootstrap theo cụm**. Notebook này xây các công cụ đó từ trung bình, phương sai, độ lệch chuẩn
+(những thứ bạn đã biết), rồi cho thấy vì sao với dữ liệu video, cách tính "sách giáo khoa" cho
+khoảng tin cậy hẹp hơn thực tế khoảng năm lần. Notebook `00_thong_ke_suy_luan` của vlm-speedrun đi sâu hơn về
+kiểm định và p-value; ở đây chỉ dùng những gì dự án monodist cần.
+
+| Mục | Câu hỏi |
+|---|---|
+| 1. Ước lượng và sai số chuẩn | 7,9% đo trên tập test nói gì về sai số "thật"? |
+| 2. Khoảng tin cậy | Nghĩa chính xác của "[6,7; 9,3]" |
+| 3. Bootstrap | Khoảng tin cậy khi không có công thức |
+| 4. Các khung hình không độc lập | Hệ số tương quan nội cụm, cỡ mẫu hiệu dụng |
+| 5. Bootstrap theo cụm | Lấy mẫu lại cả chiếc xe, không lấy từng khung |
+| 6. So sánh theo cặp | Vì sao so trên cùng vật thì chắc chắn hơn |
+| 7. Trung bình, trung vị, và một chiếc xe | Một vật có thể chi phối cả kết luận |
+
+### CODE
+import json
+from pathlib import Path
+
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+
+from monodist import kitti, metrics, evaluate as E
+
+torch.set_num_threads(2)
+ROOT = Path("../data/kitti_tracking")
+plt.rcParams.update({"figure.figsize": (9, 3.2), "figure.dpi": 110})
+rng = np.random.default_rng(0)
+
+const = E.constants(ROOT)
+_, coco = E.run(ROOT, "../results/det/coco_1280", const, n_boot=10)      # per-object predictions on the test set
+_, ft = E.run(ROOT, "../results/det/ft_1280_nms", const, n_boot=10)
+err = np.abs(coco["pred_mlp"] - coco["z"]) / coco["z"]                     # AbsRel of each matched object-frame
+track = np.array([f"{s}/{t}" for s, t in zip(coco["seq"], coco["track"])])
+print(f"{len(err)} object-frames from {len(np.unique(track))} tracks; mean AbsRel {err.mean():.4f}")
+
+### MD
+## 1. Ước lượng và sai số chuẩn
+
+Tập test có 5.940 lần một vật được nhìn thấy. Điều ta thực sự muốn biết là sai số trên **mọi**
+cảnh lái xe kiểu KITTI, gọi là $\mu$. Con số 7,9% chỉ là **ước lượng** $\bar e$ của $\mu$, tính
+trên một mẫu. Lấy một mẫu khác (những con phố khác), $\bar e$ sẽ khác.
+
+**Sai số chuẩn** đo độ dao động đó. Nếu $n$ giá trị $e_1,\dots,e_n$ **độc lập**, cùng phương sai
+$\sigma^2$, thì
+
+$$\operatorname{Var}(\bar e) = \operatorname{Var}\Big(\frac1n\sum_i e_i\Big) = \frac{1}{n^2}\sum_i \operatorname{Var}(e_i) = \frac{\sigma^2}{n}
+\quad\Longrightarrow\quad \text{SE}(\bar e) = \frac{\sigma}{\sqrt n}.$$
+
+Bước giữa dùng tính chất: phương sai của tổng các biến **độc lập** bằng tổng phương sai. Giữ
+lấy chữ "độc lập"; mục 4 cho thấy nó không đúng ở đây.
+
+**Ký hiệu mới**
+- $\mu$: sai số trung bình thật (không quan sát được) · $\bar e$: sai số trung bình đo được
+- $\sigma$: độ lệch chuẩn của từng $e_i$ · $\text{SE}$: sai số chuẩn (standard error)
+
+## 2. Khoảng tin cậy
+
+**Định nghĩa.** Một quy trình dựng khoảng là **khoảng tin cậy 95%** nếu, khi lặp lại toàn bộ
+thí nghiệm (lấy mẫu mới, tính lại khoảng) rất nhiều lần, 95% số khoảng dựng được chứa $\mu$.
+Xác suất 95% thuộc về **quy trình**, không thuộc về một khoảng cụ thể đã tính xong.
+
+**Công thức khi có SE.** Theo định lý giới hạn trung tâm, với $n$ lớn, $\bar e$ gần phân phối
+chuẩn quanh $\mu$ với độ lệch chuẩn SE, và 95% khối lượng của phân phối chuẩn nằm trong
+$\pm 1{,}96$ độ lệch chuẩn:
+
+$$\bar e \pm 1{,}96\cdot\text{SE}.$$
+
+### CODE
+se_naive = err.std(ddof=1) / np.sqrt(len(err))
+print(f"treating the {len(err)} object-frames as independent: SE = {se_naive:.4f}, "
+      f"95% interval [{err.mean() - 1.96 * se_naive:.4f}, {err.mean() + 1.96 * se_naive:.4f}]")
+
+### MD
+Khoảng này hẹp: $\pm 0{,}4$ điểm phần trăm. Mục 4 cho thấy nó hẹp **sai**.
+
+## 3. Bootstrap
+
+**Ý tưởng.** Ta không lấy thêm được mẫu thật, nhưng có thể mô phỏng việc đó: coi mẫu đang có là
+"quần thể", rút ra từ nó $n$ phần tử **có hoàn lại** (một phần tử có thể được rút nhiều lần),
+tính lại thống kê, lặp vài nghìn lần. Độ phân tán của các giá trị tính lại xấp xỉ độ dao động
+của thống kê thật. **Khoảng phân vị**: lấy phân vị 2,5% và 97,5% của các giá trị đó.
+
+**Khi nào dùng.** Khi không có công thức SE (trung vị, tỉ số, hiệu của hai phương pháp...), hoặc
+khi không tin giả định phân phối chuẩn. Với trung bình của mẫu độc lập, bootstrap cho cùng kết
+quả với công thức, nên đó là phép kiểm tra đầu tiên:
+
+### CODE
+def bootstrap(values, stat=np.mean, n_boot=2000, seed=0):
+    r = np.random.default_rng(seed)
+    boots = [stat(values[r.integers(0, len(values), len(values))]) for _ in range(n_boot)]
+    return np.percentile(boots, [2.5, 97.5])
+
+print("bootstrap over object-frames, mean:  ", np.round(bootstrap(err), 4))
+print("bootstrap over object-frames, median:", np.round(bootstrap(err, np.median), 4))
+
+### MD
+Bootstrap theo từng khung hình khớp công thức ở mục 2. Cả hai **cùng sai**, vì cùng giả định
+các khung hình độc lập.
+
+## 4. Các khung hình không độc lập
+
+Một chiếc xe đi cùng camera 100 khung hình cho 100 sai số gần như giống nhau: nếu mạng ước
+lượng sai chiếc xe đó 15% ở khung này, khung sau cũng sai cỡ 15%. Một trăm con số đó mang lượng
+thông tin của **ít hơn nhiều** so với 100 vật khác nhau.
+
+**Đo mức phụ thuộc: hệ số tương quan nội cụm.** Chia phương sai của $e$ thành phần *giữa* các
+vật (mỗi vật có mức sai riêng) và phần *trong* một vật (dao động qua các khung):
+
+$$\rho = \frac{\sigma^2_{\text{giữa}}}{\sigma^2_{\text{giữa}} + \sigma^2_{\text{trong}}}.$$
+
+$\rho = 0$: các khung của một vật không giống nhau hơn các khung của hai vật khác nhau.
+$\rho = 1$: mọi khung của một vật cho cùng một giá trị.
+
+**Hệ số thiết kế và cỡ mẫu hiệu dụng.** Với các cụm cỡ trung bình $\bar m$, phương sai của trung
+bình bị nhân lên
+
+$$\text{DEFF} = 1 + (\bar m - 1)\,\rho, \qquad n_{\text{hiệu dụng}} = \frac{n}{\text{DEFF}}.$$
+
+(Khi $\rho = 0$, DEFF = 1; khi $\rho = 1$, $n_{\text{hiệu dụng}} = n / \bar m$ = số cụm.) Dạng công
+thức này là xấp xỉ khi các cụm cỡ bằng nhau; ở đây cỡ cụm chênh lệch nhiều nên chỉ dùng để
+hình dung độ lớn.
+
+**Ký hiệu mới**
+- $\rho$: hệ số tương quan nội cụm (intra-class correlation) · $\bar m$: số khung trung bình mỗi vật
+- DEFF: hệ số thiết kế (design effect) · $n_{\text{hiệu dụng}}$: số mẫu độc lập tương đương
+
+### CODE
+ids, inv = np.unique(track, return_inverse=True)
+m = np.bincount(inv)
+means = np.bincount(inv, weights=err) / m
+within = np.sum((err - means[inv]) ** 2) / (len(err) - len(ids))                 # pooled within-track variance
+between = max(np.var(means, ddof=1) - within * np.mean(1 / m), 0.0)            # variance of the true track means
+rho = between / (between + within)
+deff = 1 + (m.mean() - 1) * rho
+print(f"{len(ids)} tracks, mean {m.mean():.1f} frames per track")
+print(f"intra-class correlation rho = {rho:.2f} -> design effect {deff:.1f} -> effective n about {len(err) / deff:.0f} of {len(err)}")
+
+### MD
+Mỗi vật xuất hiện trung bình khoảng 42 khung, $\rho \approx 0{,}23$, nên 5.940 khung hình chỉ
+tương đương khoảng **580** mẫu độc lập. Theo công thức, khoảng tin cậy ở mục 2 hẹp hơn thực tế
+$\sqrt{\text{DEFF}} = \sqrt{10{,}3} \approx 3{,}2$ lần. Mục 5 đo trực tiếp và thấy gần 5 lần: công
+thức DEFF giả định các cụm bằng nhau, còn ở đây có vật xuất hiện vài khung, có vật vài trăm khung,
+và cụm lớn làm độ dao động tăng thêm.
+
+## 5. Bootstrap theo cụm
+
+Cách sửa: lấy mẫu lại **đơn vị thật sự độc lập**, tức là cả chiếc xe (cả vệt `track`). Mỗi lần
+bootstrap rút $K$ vật có hoàn lại từ $K$ vật, mang theo **mọi khung hình** của vật đó, rồi tính
+lại trung bình trên tất cả các khung được rút.
+
+### CODE
+def cluster_bootstrap(values, clusters, stat=np.mean, n_boot=2000, seed=0):
+    r = np.random.default_rng(seed)
+    ids, inv = np.unique(clusters, return_inverse=True)
+    groups = [np.where(inv == k)[0] for k in range(len(ids))]
+    boots = [stat(values[np.concatenate([groups[k] for k in r.integers(0, len(ids), len(ids))])]) for _ in range(n_boot)]
+    return np.percentile(boots, [2.5, 97.5])
+
+lo_f, hi_f = bootstrap(err)
+lo_c, hi_c = cluster_bootstrap(err, track)
+print(f"frames as independent : [{lo_f:.4f}, {hi_f:.4f}]  width {hi_f - lo_f:.4f}")
+print(f"tracks as the unit    : [{lo_c:.4f}, {hi_c:.4f}]  width {hi_c - lo_c:.4f}  ({(hi_c - lo_c) / (hi_f - lo_f):.1f}x wider)")
+print("project (metrics.cluster_bootstrap):", np.round(metrics.cluster_bootstrap(err, track)[1:], 4))
+
+### MD
+Khoảng đúng rộng hơn 4,9 lần. Đó là khoảng README báo: 7,9% [6,7; 9,3]. `metrics.cluster_bootstrap`
+của dự án dùng một đường tính nhanh cho trung bình (đếm số lần mỗi cụm được rút rồi nhân ma
+trận) nhưng cho cùng kết quả; `tests/test_metrics.py` kiểm tra điều đó.
+
+## 6. So sánh theo cặp
+
+Câu hỏi "MLP có tốt hơn công thức kích thước không" có thể trả lời theo hai cách:
+- **Hai khoảng rời**: tính khoảng tin cậy của từng phương pháp, xem có chồng nhau không.
+- **Theo cặp**: trên **cùng từng vật**, tính hiệu $d_i = e^{\text{size}}_i - e^{\text{MLP}}_i$, rồi
+  tính khoảng tin cậy cho trung bình của $d$ (vẫn bootstrap theo cụm).
+
+Cách thứ hai mạnh hơn vì
+
+$$\operatorname{Var}(A - B) = \operatorname{Var}(A) + \operatorname{Var}(B) - 2\operatorname{Cov}(A, B).$$
+
+Hai phương pháp cùng gặp khó ở cùng những vật (xe bị cắt, xe xa), nên sai số của chúng **tương
+quan dương**; hiệp phương sai trừ bớt phần độ khó chung đó, chỉ còn lại khác biệt thật giữa hai
+phương pháp.
+
+**Ký hiệu mới**
+- $\operatorname{Cov}(A, B)$: hiệp phương sai, dương khi $A$ và $B$ cùng lớn cùng nhỏ
+
+### CODE
+e_size = np.abs(coco["pred_size"] - coco["z"]) / coco["z"]
+diff = e_size - err
+print(f"correlation of the two methods' errors over objects: {np.corrcoef(e_size, err)[0, 1]:.2f}")
+print("size alone:", np.round(cluster_bootstrap(e_size, track), 4), "| MLP alone:", np.round(cluster_bootstrap(err, track), 4))
+print(f"paired difference size - MLP: {diff.mean():.4f}, 95% interval {np.round(cluster_bootstrap(diff, track), 4)}")
+
+### MD
+Khoảng của hiệu nằm hẳn trên 0: MLP tốt hơn công thức kích thước, và kết luận đó không đổi khi
+xét độ dao động do chọn mẫu.
+
+## 7. Trung bình, trung vị, và một chiếc xe
+
+So hai bộ nhận diện thì phải so trên **cùng những vật**: nếu bộ fine-tune tìm thêm được những vật
+khó mà bộ COCO bỏ sót, sai số trung bình của nó có thể tăng dù nó tốt hơn. `evaluate.compare` lấy
+**giao** của hai tập vật đã được tìm thấy.
+
+### CODE
+keys, ia, ib = np.intersect1d(coco["keys"], ft["keys"], return_indices=True)
+z = coco["z"][ia]
+ea = np.abs(coco["pred_mlp"][ia] - z) / z
+eb = np.abs(ft["pred_mlp"][ib] - z) / z
+tr = np.array([f"{s}/{t}" for s, t in zip(coco["seq"][ia], coco["track"][ia])])
+d = eb - ea
+print(f"{len(keys)} object-frames found by both; MLP mean AbsRel COCO {ea.mean():.4f}, fine-tuned {eb.mean():.4f}")
+print(f"difference (fine-tuned - COCO) {d.mean():.4f}, 95% interval {np.round(cluster_bootstrap(d, tr), 4)}")
+share = {t: d[tr == t].sum() / len(d) for t in np.unique(tr)}
+top = sorted(share.items(), key=lambda kv: -abs(kv[1]))[:3]
+print("largest contributions to the mean difference (points):", [(t, round(v * 100, 2)) for t, v in top])
+keep = tr != top[0][0]
+print(f"without {top[0][0]}: COCO {ea[keep].mean():.4f}, fine-tuned {eb[keep].mean():.4f}")
+print(f"medians: COCO {np.median(ea):.4f}, fine-tuned {np.median(eb):.4f}")
+
+### MD
+**Một chiếc xe** (chuỗi 0015, vệt 2: sát camera 2–5 m, bị mép ảnh cắt suốt 300 khung) góp phần
+lớn nhất của chênh lệch. Bỏ nó ra, hai bộ nhận diện cách nhau chưa tới một điểm. Trung vị, vốn
+không để ý vài giá trị cực đoan, cũng gần nhau.
+
+Ba bài học cho cách đọc kết quả:
+- **Trung bình theo khung hình** cho mỗi vật trọng số bằng số khung nó xuất hiện. Một vật đứng lâu
+  trong khung hình mà bị đo sai thì kéo cả con số.
+- **Khoảng tin cậy theo cụm** đã báo trước điều này: khoảng của hiệu rất rộng và lệch hẳn về một
+  phía, dấu hiệu của một vài cụm cực đoan.
+- Luôn nhìn **trung vị** và **phân rã theo vật** trước khi viết kết luận từ một trung bình.
+
+## Tóm tắt
+
+- $\text{SE} = \sigma/\sqrt n$ chỉ đúng khi các mẫu độc lập; khoảng 95% $\approx \bar e \pm 1{,}96\,\text{SE}$.
+- Bootstrap: lấy mẫu lại có hoàn lại để ước lượng độ dao động khi không có công thức.
+- Khung hình của một vật tương quan mạnh ($\rho$ lớn), nên 5.940 khung chỉ tương đương vài trăm mẫu độc lập.
+- Bootstrap **theo cụm** (theo vật) cho khoảng rộng hơn vài lần và đúng hơn; đó là khoảng trong README.
+- So theo cặp trên cùng vật trừ đi độ khó chung; so hai bộ nhận diện trên giao của các vật chúng tìm thấy.
+- Một vật cực đoan có thể chi phối trung bình: xem trung vị và phân rã theo vật.
