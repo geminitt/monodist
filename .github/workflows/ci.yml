@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # CPU PyTorch and Ultralytics; the tests need no GPU. The KITTI labels they read are in the
+      # repository (data/kitti_tracking/training); the one test that needs images skips itself.
+      - name: Install pixi and the environment
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.79.0
+          cache: true
+
+      - name: Run tests
+        run: pixi run test

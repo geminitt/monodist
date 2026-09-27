@@ -1,7 +1,14 @@
 .pixi/
 __pycache__/
 *.egg-info/
-data/
+data/*
+!data/kitti_tracking/
+data/kitti_tracking/*
+!data/kitti_tracking/README.md
+!data/kitti_tracking/training/
+data/kitti_tracking/training/*
+!data/kitti_tracking/training/label_02/
+!data/kitti_tracking/training/calib/
 runs/
 *.pt
 *.engine

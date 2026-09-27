@@ -185,7 +185,7 @@ Each one was found by checking a number that looked too good or too odd, and fix
 ## Reproduce
 
 ```bash
-pixi install && pixi run test          # 31 tests on CPU, about 30 s (labels needed in data/, see below)
+pixi install && pixi run test          # 31 tests on CPU, about 30 s
 
 # Kaggle (GPU T4, dataset leducnhuan/kitti-tracking), from the repo root, code pinned to the pushed HEAD:
 python kaggle/push.py finetune --mode full      # ~40 min
@@ -197,10 +197,10 @@ python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_12
 python -m monodist.report > results/summary.md
 ```
 
-`results/det/` holds every detection of every configuration (about 70 MB), so the evaluation reruns on a CPU
-without Kaggle. `data/kitti_tracking/training/{label_02,calib}` (9 MB) is enough for the tests and the evaluation;
-`kaggle datasets download leducnhuan/kitti-tracking -f kitti_tracking/training/label_02/0000.txt` fetches
-one file at a time.
+The KITTI labels and calibration (9 MB) are in `data/kitti_tracking/training/`, and `results/det/`
+holds every detection of every configuration (about 70 MB), so the tests and the whole evaluation
+rerun on a fresh clone, on a CPU, without Kaggle. The fine-tuned weights behind these results are
+attached to the GitHub release `v0.1`.
 
 ## Layout
 
@@ -215,3 +215,13 @@ one file at a time.
 | `monodist/latency.py` | per-stage timing |
 | `monodist/evaluate.py`, `report.py` | everything above, into `results/` |
 | `kaggle/` | the Kaggle kernels and the script that pushes them |
+
+## Data and license
+
+The code is released under the **GNU AGPL-3.0** (see `LICENSE`), the license of Ultralytics, which it
+depends on.
+
+The labels and calibration in `data/kitti_tracking/` and every result derived from KITTI come from the
+**KITTI Vision Benchmark Suite** (A. Geiger, P. Lenz, R. Urtasun, "Are we ready for Autonomous Driving?
+The KITTI Vision Benchmark Suite", CVPR 2012), licensed under **CC BY-NC-SA 3.0**: non-commercial use
+only, with attribution, under the same license. See `data/kitti_tracking/README.md`.
