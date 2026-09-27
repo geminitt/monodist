@@ -14,7 +14,6 @@ import numpy as np
 from . import geometry, kitti, match, metrics, mlp
 from .detect import merge
 
-CONF = 0.25  # detections used for distance: the usual operating point of a YOLO detector
 MIN_Z = 2.0  # closer objects are all cut by the image border; AbsRel near Z = 0 would dominate the mean
 
 
@@ -102,11 +101,18 @@ def run(root, det_dir, const, n_boot=2000, seed=0, mlp_epochs=150):
     test_gt = {k: v for k, v in gt.items() if k[0] in kitti.SPLIT["test"]}
     tm = np.isin(det["seq"], kitti.SPLIT["test"])
     tdet = {k: v[tm] for k, v in det.items()}
-    res = {"det_dir": str(det_dir), "conf": CONF, "min_z": MIN_Z, "constants": const,
+    # Operating point: per class, the score threshold with the best F1 on the val sequences. A fixed 0.25 would
+    # favour whichever detector happens to output higher scores; fine-tuning changes the score scale.
+    val_gt = {k: v for k, v in gt.items() if k[0] in kitti.SPLIT["val"]}
+    vm = np.isin(det["seq"], kitti.SPLIT["val"])
+    conf = [match.f1_threshold(det["score"][vm & (det["cls"] == c)], status[vm & (det["cls"] == c), 0],
+                               int(sum((g["cls"] == c).sum() for g in val_gt.values()))) for c in range(len(kitti.CLASSES))]
+    res = {"det_dir": str(det_dir), "conf": dict(zip(kitti.CLASSES, conf)), "min_z": MIN_Z, "constants": const,
            "detection": match.detection_report(tdet, test_gt, status[tm]),
-           "recall_by_distance": match.recall_by_distance(tdet, test_gt, status[tm], gt_idx[tm], CONF, metrics.BINS)}
+           "recall_by_distance": match.recall_by_distance(tdet, test_gt, status[tm], gt_idx[tm],
+                                                          match.per_detection_conf(tdet, conf), metrics.BINS)}
 
-    pairs = match.matched_pairs(det, gt, status, gt_idx, CONF)
+    pairs = match.matched_pairs(det, gt, status, gt_idx, match.per_detection_conf(det, conf))
     near = pairs["z"] < MIN_Z
     res["excluded_below_min_z"] = int(near.sum())
     pairs = {k: v[~near] for k, v in pairs.items()}

@@ -73,3 +73,11 @@ def test_evaluate_and_pairs():
     assert len(pairs["z"]) == 1 and pairs["z"][0] == 10.0 and pairs["seq"][0] == "0000"
     rep = match.detection_report(det, gt, status)
     assert rep["Car"]["AP50"] == 1.0 and rep["Car"]["n_gt"] == 1
+
+
+def test_f1_threshold():
+    score = np.array([0.9, 0.8, 0.7, 0.6, 0.5])
+    status = np.array([1, 1, 0, 1, 0])
+    # F1 after each detection with 3 objects: 2/4, 4/5, 4/6, 6/7, 6/8 -> best keeps the first four
+    assert match.f1_threshold(score, status, 3) == 0.6
+    assert match.f1_threshold(np.array([0.9, 0.8]), np.array([-1, 1]), 1) == 0.8  # ignored ones do not count

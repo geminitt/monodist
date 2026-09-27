@@ -37,7 +37,9 @@ def main(eval_dir="results/eval", latency_dir="results/latency"):
             [[k, f"{r['detection']['Car']['AP50-95']:.3f}", f"{r['detection']['Pedestrian']['AP50-95']:.3f}",
               f"{r['detection']['mAP50-95']:.3f}", f"{r['detection']['mAP50']:.3f}"] for k, r in ev.items()]) + "\n\n")
 
-    w(f"## Recall by distance (score >= {next(iter(ev.values()))['conf']}, IoU >= 0.5)\n\n")
+    w("## Operating point: per-class score threshold with the best F1 on the val sequences\n\n")
+    w(table(["Configuration", *kitti.CLASSES], [[k] + [f"{r['conf'][c]:.3f}" for c in kitti.CLASSES] for k, r in ev.items()]) + "\n\n")
+    w("## Recall by distance at that operating point (IoU >= 0.5)\n\n")
     rows = []
     for k, r in ev.items():
         for c in kitti.CLASSES:

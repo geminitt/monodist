@@ -124,8 +124,25 @@ def detection_report(det, gt, status, thresholds=IOU_THRESHOLDS):
     return out
 
 
+def f1_threshold(score, status, n_gt):
+    """The score threshold that maximises F1 (IoU >= 0.5 status column), ignoring IGNORED detections."""
+    keep = status != IGNORED
+    score, tp = score[keep], status[keep] == TP
+    if n_gt == 0 or len(score) == 0:
+        return 1.0
+    order = np.argsort(-score, kind="stable")
+    score, ctp = score[order], np.cumsum(tp[order])
+    f1 = 2 * ctp / (np.arange(1, len(score) + 1) + n_gt)
+    return float(score[int(np.argmax(f1))])
+
+
+def per_detection_conf(det, thresholds):
+    """Broadcast one threshold per class to one threshold per detection."""
+    return np.asarray(thresholds)[det["cls"]]
+
+
 def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
-    """One row per detection that hits a labelled object at IoU >= 0.5 with score >= conf."""
+    """One row per detection that hits a labelled object at IoU >= 0.5 with score >= conf (scalar or per detection)."""
     rows = np.where((status[:, iou_col] == TP) & (det["score"] >= conf))[0]
     cols = defaultdict(list)
     for i in rows:
