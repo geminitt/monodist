@@ -41,7 +41,7 @@ seqs = kitti.SPLIT["val"] + kitti.SPLIT["test"]
 if smoke:
     seqs = ["0003", "0014"]
 for name, weights, imgsz, half, is_coco in configs:
-    cmd = (f"cd {SRC} && python -m monodist.detect --weights {weights} --root {root} --out {WORK}/det/{name} "
+    cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.detect --weights {weights} --root {root} --out {WORK}/det/{name} "
            f"--imgsz {imgsz} --seqs {' '.join(seqs)}" + (" --half" if half else "") + (" --coco" if is_coco else "")
            + (" --frames 20" if smoke else ""))
     t = time.time()
@@ -55,7 +55,7 @@ lat = "--frames 30 --rounds 1 --warmup 5" if smoke else "--frames 300 --rounds 3
 runs = [(n, w, s, h, False) for n, w, s, h, _ in configs]
 runs += [(n + "_pipelined", w, s, h, True) for n, w, s, h, _ in configs if n in ("ft_1280", "ft_1280_trt16")]
 for name, weights, imgsz, half, pipelined in runs:
-    cmd = (f"cd {SRC} && python -m monodist.latency --weights {weights} --root {root} --out {WORK}/latency/{name}.json "
+    cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.latency --weights {weights} --root {root} --out {WORK}/latency/{name}.json "
            f"--imgsz {imgsz} {lat}" + (" --half" if half else "") + (" --pipelined" if pipelined else ""))
     try:
         sh(cmd)
