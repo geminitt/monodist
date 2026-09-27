@@ -7,3 +7,4 @@ runs/
 *.engine
 *.onnx
 kaggle/*/build/
+notes/

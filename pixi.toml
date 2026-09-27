@@ -13,6 +13,10 @@ torchvision = "*"
 numpy = "*"
 matplotlib = "*"
 pytest = "*"
+# study notebooks (branch notes, worktree ./notes)
+ipykernel = "*"
+nbformat = "*"
+nbclient = "*"
 
 [pypi-dependencies]
 ultralytics = ">=8.4"
