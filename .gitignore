@@ -15,3 +15,11 @@ runs/
 *.onnx
 kaggle/*/build*/
 notes/
+# detections of every fold x configuration are in the v0.2 release; only the kept ones are tracked
+results/cv/det/*
+!results/cv/det/f0_b_nms/
+!results/cv/det/f0_b_e2e/
+!results/cv/det/f1_b_nms/
+!results/cv/det/f1_b_e2e/
+!results/cv/det/f2_a_nms/
+!results/cv/det/f2_a_e2e/

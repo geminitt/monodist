@@ -1,0 +1,22 @@
+{
+ "weights": "/tmp/ft.pt",
+ "imgsz": [
+  416,
+  1280
+ ],
+ "nms_head": true,
+ "fp32": {
+  "kernels_per_forward": 400.0,
+  "gpu_busy_ms": 8.81851295000003,
+  "eager_wall_ms": 10.252925500026322,
+  "graph_wall_ms": 5.538382500162697,
+  "gpu_busy_share": 0.8600972424872678
+ },
+ "fp16": {
+  "kernels_per_forward": 479.95,
+  "gpu_busy_ms": 5.65173614999994,
+  "eager_wall_ms": 11.324383499868418,
+  "graph_wall_ms": 3.3201109999936307,
+  "gpu_busy_share": 0.4990767179569298
+ }
+}

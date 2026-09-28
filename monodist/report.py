@@ -83,6 +83,21 @@ def values():
             v[f"compare.{name}.n"] = f"{c['n_common']:,}"
             for m in METHODS:
                 v[f"compare.{name}.{m}"] = "{:+.1f} [{:+.1f}, {:+.1f}]".format(*(x * 100 for x in c[m]["b - a"]))
+    sel = RESULTS / "cv" / "selection.json"
+    if sel.exists():
+        s_ = load(sel)
+        v["chosen"] = ", ".join(f"fold {k}: {c}" for k, c in s_["chosen"].items())
+    hyp = RESULTS / "cv" / "hypothesis_e.json"
+    if hyp.exists():
+        h = load(hyp)
+        for c in h:
+            for k2, val in h[c].items():
+                v[f"hyp.{c}.{k2}"] = f"{val:.3f}" if isinstance(val, float) else str(val)
+    for k in ("ft_1280", "ft_1280_fp16", "ft_1280_trt16", "ft_1280_nms", "ft_1280_nms_trt16", "ft_640", "ft_640_trt16",
+              "coco_1280", "coco_1280_nms"):
+        p = RESULTS / "eval" / f"{k}.json"
+        if p.exists():
+            v[f"fixed.{k}.map"] = f"{load(p)['detection']['mAP50-95']:.3f}"
     lat = latency()
     for k, r in lat.items():
         for s in ("decode", "preprocess", "inference", "postprocess", "total"):
@@ -94,8 +109,12 @@ def values():
             r = load(p)
             for dt in ("fp32", "fp16"):
                 for key, val in r[dt].items():
-                    if isinstance(val, float):
-                        v[f"profile.{head}.{dt}.{key}"] = f"{val:.2f}" if key != "gpu_busy_share" else pct(val, 0)
+                    if key == "kernels_per_forward":
+                        v[f"profile.{head}.{dt}.{key}"] = f"{val:.0f}"
+                    elif key == "gpu_busy_share":
+                        v[f"profile.{head}.{dt}.{key}"] = pct(val, 0)
+                    elif isinstance(val, float):
+                        v[f"profile.{head}.{dt}.{key}"] = f"{val:.1f}"
                     elif isinstance(val, int):
                         v[f"profile.{head}.{dt}.{key}"] = str(val)
     return v

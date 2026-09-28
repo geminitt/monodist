@@ -21,3 +21,7 @@ jobs:
 
       - name: Run tests
         run: pixi run test
+
+      # Every number in README.md is filled in from results/ by monodist/report.py.
+      - name: Check README matches the recorded results
+        run: pixi run python -m monodist.report --check
