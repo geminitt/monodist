@@ -38,8 +38,9 @@ frames per second**.
 - **Three-fold cross-validation by sequence** (`kitti.FOLDS`): each sequence is test exactly once; the other
   sequences of a fold split about 70/30 into train and val. Folds balance cars (instances and tracks) and
   pedestrian tracks; pedestrian instances cannot be balanced, since sequence 0019 alone holds 53% of them.
-- **Per fold**: configurations a-d are fine-tuned on train (epoch chosen by Ultralytics on val) and the one
-  with the best val mAP50-95, scored with the project's own matcher, is kept (fold 0: b, fold 1: b, fold 2: a). The known-size
+- **Per fold**: configurations a-d are fine-tuned on train (epoch chosen by Ultralytics on val; for c and d
+  its val score also averages the Van and Cyclist classes) and the one with the best val mAP50-95 on Car and
+  Pedestrian, scored with the project's own matcher, is kept (fold 0: b, fold 1: b, fold 2: a). The known-size
   heights and the camera height come from the train labels; the MLP trains on the detector's boxes on the
   train sequences (epochs by leave-one-sequence-out, five seeds averaged); the score threshold of each class
   is the F1-best one on val. Nothing is chosen on test.
@@ -63,8 +64,8 @@ All tables, generated from `results/`, are also in [results/summary.md](results/
 | fold 1 | 0.505 | **0.521** | 0.512 | 0.503 |
 | fold 2 | **0.531** | 0.524 | 0.516 | 0.527 |
 
-Labelling vans and cyclists, with or without greying DontCare regions, never beat the defaults on val; a
-lower learning rate won two folds by about a point.
+Labelling vans and cyclists, with or without greying DontCare regions, never won a fold (c came second in
+fold 1); a lower learning rate won two folds by about a point over the defaults.
 
 ### Detection (test, per fold, mean ± standard deviation over folds)
 
@@ -210,8 +211,12 @@ pixi install && pixi run test               # CPU tests, KITTI labels included i
 python kaggle/queue.py --commit $(git rev-parse HEAD)   # 13 fine-tuning jobs, two at a time, ~6 h of GPU
 python kaggle/push.py eval --mode latency               # latency, CUDA graphs, kernel profile
 
+# the fixed-split experiments behind results/eval and the accuracy column of the latency table:
+python kaggle/push.py finetune --mode full && python kaggle/push.py eval --mode full
+
 # CPU only, from the detections:
 python -m monodist.crossval --root data/kitti_tracking --runs results/cv/det --out results/cv
+python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_1280 results/det/ft_1280 ...
 python -m monodist.report --write
 ```
 

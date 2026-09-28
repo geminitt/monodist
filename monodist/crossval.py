@@ -62,7 +62,7 @@ def hypothesis(root, runs, logs, fold=0, configs=("a", "e")):
     for c in configs:
         d = {f"{part}_{head}": fn(root, Path(runs) / f"f{fold}_{c}_{head}", fold)
              for part, fn in (("val", val_map), ("test", test_map)) for head in ("nms", "e2e")}
-        d["epoch"] = best_epoch(Path(logs) / f"f{fold}-{c}" / "runs" / f"f{fold}_{c}" / "results.csv")
+        d["epoch"] = best_epoch(Path(logs) / f"f{fold}-{c}.csv")
         out[c] = d
     return out
 
@@ -101,7 +101,7 @@ def main():
     ap.add_argument("--configs", nargs="+", default=["a", "b", "c", "d"])
     ap.add_argument("--out", default="results/cv")
     ap.add_argument("--boot", type=int, default=2000)
-    ap.add_argument("--logs", default="runs/kaggle/cv", help="downloaded Kaggle outputs (training curves)")
+    ap.add_argument("--logs", default="results/cv/train", help="training curves, f<fold>-<config>.csv")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
