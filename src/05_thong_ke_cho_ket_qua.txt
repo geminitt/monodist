@@ -16,6 +16,7 @@ kiểm định và p-value; ở đây chỉ dùng những gì dự án monodist 
 | 5. Bootstrap theo cụm | Lấy mẫu lại cả chiếc xe, không lấy từng khung |
 | 6. So sánh theo cặp | Vì sao so trên cùng vật thì chắc chắn hơn |
 | 7. Trung bình, trung vị, và một chiếc xe | Một vật có thể chi phối cả kết luận |
+| 8. Kiểm định chéo | Dùng mọi chuỗi làm test, gộp kết quả thế nào |
 
 ### CODE
 import json
@@ -32,9 +33,8 @@ ROOT = Path("../data/kitti_tracking")
 plt.rcParams.update({"figure.figsize": (9, 3.2), "figure.dpi": 110})
 rng = np.random.default_rng(0)
 
-const = E.constants(ROOT)
-_, coco = E.run(ROOT, "../results/det/coco_1280", const, n_boot=10)      # per-object predictions on the test set
-_, ft = E.run(ROOT, "../results/det/ft_1280_nms", const, n_boot=10)
+_, coco = E.predict(ROOT, "../results/det/coco_1280")        # per-object predictions on the fixed split's test set
+_, ft = E.predict(ROOT, "../results/det/ft_1280_nms")
 err = np.abs(coco["pred_mlp"] - coco["z"]) / coco["z"]                     # AbsRel of each matched object-frame
 track = np.array([f"{s}/{t}" for s, t in zip(coco["seq"], coco["track"])])
 print(f"{len(err)} object-frames from {len(np.unique(track))} tracks; mean AbsRel {err.mean():.4f}")
@@ -236,6 +236,45 @@ Ba bài học cho cách đọc kết quả:
   phía, dấu hiệu của một vài cụm cực đoan.
 - Luôn nhìn **trung vị** và **phân rã theo vật** trước khi viết kết luận từ một trung bình.
 
+## 8. Kiểm định chéo: dùng mọi chuỗi làm test
+
+Phép chia cố định chỉ có 8 chuỗi test, 30 người đi bộ riêng biệt, và một lần fine-tune duy nhất. README
+cuối cùng dùng **kiểm định chéo 3 phần theo chuỗi** (`kitti.FOLDS`):
+
+1. Chia 21 chuỗi thành 3 phần. Lần lượt mỗi phần làm **test**; các chuỗi còn lại tách thành **train** và
+   **val** (khoảng 70/30).
+2. Trong mỗi phần: fine-tune 4 cấu hình trên train, **chọn cấu hình trên val**, rồi mới chấm trên test.
+   Test không bao giờ được dùng để chọn bất cứ thứ gì, kể cả ngưỡng điểm và mạng khoảng cách.
+3. Mỗi chuỗi làm test đúng một lần, nên các dòng sai số theo vật của 3 phần **gộp lại** thành một tập
+   phủ cả 21 chuỗi, và bootstrap theo cụm (mục 5) chạy trên tập gộp đó.
+4. AP thì **không** gộp: ba mô hình của ba phần cho điểm tin cậy theo thang khác nhau, nên xếp chung một
+   đường precision–recall là vô nghĩa. AP được tính trong từng phần, rồi báo trung bình ± độ lệch chuẩn
+   qua 3 phần.
+
+**Ký hiệu mới**
+- **kiểm định chéo $k$ phần** ($k$-fold cross-validation): chia dữ liệu thành $k$ phần, lần lượt dùng mỗi
+  phần làm tập đánh giá, rồi tổng hợp $k$ kết quả
+
+### CODE
+cv = {k: json.loads(Path(f"../results/cv/{k}.json").read_text()) for k in ("coco", "finetuned_nms")}
+for k, r in cv.items():
+    m = r["detection"]["mAP50-95"]
+    d = r["distance"]["mlp"]["all"]
+    print(f"{k:14s} mAP50-95 per fold {np.round(m['per_fold'], 3)} -> {m['mean']:.3f} +- {m['std']:.3f} | "
+          f"MLP AbsRel {d['absrel_mean'][0]:.3f} {np.round(d['absrel_mean'][1:], 3)}, per object {d['absrel_track_mean'][0]:.3f}, "
+          f"{d['n']} object-frames from {d['tracks']} tracks")
+c = json.loads(Path("../results/cv/compare_coco_vs_finetuned_nms.json").read_text())
+print(f"on the {c['n_common']} object-frames both found: fine-tuned - COCO = {c['mlp']['b - a'][0] * 100:+.1f} points "
+      f"[{c['mlp']['b - a'][1] * 100:+.1f}, {c['mlp']['b - a'][2] * 100:+.1f}]")
+
+### MD
+- Số vật riêng biệt được chấm tăng từ khoảng 140 lên khoảng 700, nên khoảng tin cậy của MLP hẹp lại
+  (so với mục 5).
+- mAP dao động khá mạnh giữa các phần (bộ nhận diện COCO: từ 0,34 đến 0,46): con số trên một phép chia
+  cố định có thể lệch vài điểm chỉ vì chọn chuỗi nào làm test. Đây là lý do nên báo trung bình ± độ lệch.
+- Chênh lệch giữa hai bộ nhận diện về khoảng cách còn khoảng 0,7 điểm, và vẫn chủ yếu do chiếc xe của
+  chuỗi 0015; trung bình theo vật của hai bên bằng nhau. Kết luận của mục 7 đứng vững trên toàn bộ dữ liệu.
+
 ## Tóm tắt
 
 - $\text{SE} = \sigma/\sqrt n$ chỉ đúng khi các mẫu độc lập; khoảng 95% $\approx \bar e \pm 1{,}96\,\text{SE}$.
@@ -244,3 +283,4 @@ Ba bài học cho cách đọc kết quả:
 - Bootstrap **theo cụm** (theo vật) cho khoảng rộng hơn vài lần và đúng hơn; đó là khoảng trong README.
 - So theo cặp trên cùng vật trừ đi độ khó chung; so hai bộ nhận diện trên giao của các vật chúng tìm thấy.
 - Một vật cực đoan có thể chi phối trung bình: xem trung vị và phân rã theo vật.
+- Kiểm định chéo theo chuỗi dùng mọi chuỗi làm test một lần; sai số theo vật gộp được, AP thì báo trung bình ± độ lệch qua các phần.

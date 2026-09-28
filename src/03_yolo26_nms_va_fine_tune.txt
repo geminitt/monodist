@@ -257,10 +257,35 @@ print(f"labels touching the bottom edge: {np.mean(labels[:, 3] >= 373):.1%}")
 - Đầu ra một-một kéo gần **10%** khung chạm mép dưới ảnh, trong khi nhãn chỉ có 6% và đầu ra có
   NMS chỉ 1%. Khung bị kéo dài xuống mép dưới làm hỏng cả chiều cao khung (công thức kích thước)
   lẫn cạnh dưới (công thức mặt phẳng sàn).
-- Giải thích hợp lý nhất: epoch 4 được chọn cho đầu ra một-nhiều (mục 5), và bốn epoch chưa đủ
-  để đầu ra một-một, vốn nhận ít tín hiệu học hơn (mỗi vật chỉ một ô), thích nghi xong. Dự án
-  **chưa kiểm chứng** giả thuyết này; cách kiểm là huấn luyện lâu hơn, hoặc chọn epoch theo điểm
-  của đầu ra một-một, rồi đo lại.
+- Giả thuyết ban đầu: epoch 4 được chọn cho đầu ra một-nhiều (mục 5), và bốn epoch chưa đủ để đầu
+  ra một-một, vốn nhận ít tín hiệu học hơn (mỗi vật chỉ một ô), thích nghi xong.
+
+**Kiểm chứng giả thuyết.** Trong kiểm định chéo (README), fold 0 được huấn luyện hai lần với cùng hạt
+giống: cấu hình **a** chọn epoch theo đầu ra có NMS như mặc định, cấu hình **e** chọn epoch theo đầu ra
+một-một (`nms=False` khi validation). Hai đường mAP val trong lúc huấn luyện:
+
+### CODE
+import csv
+curves = {c: list(csv.DictReader(open(f"../results/cv/train/f0-{c}.csv"))) for c in ("a", "e")}
+for c, label in (("a", "a: val scored with the NMS head"), ("e", "e: val scored with the NMS-free head")):
+    plt.plot([int(r["epoch"]) for r in curves[c]], [float(r["metrics/mAP50-95(B)"]) for r in curves[c]], marker="o", label=label)
+plt.xlabel("epoch"); plt.ylabel("val mAP50-95"); plt.legend(); plt.show()
+h = json.loads(Path("../results/cv/hypothesis_e.json").read_text())
+for c in ("a", "e"):
+    print(f"{c}: best epoch {h[c]['epoch']:2d} | test mAP50-95 NMS head {h[c]['test_nms']:.3f}, NMS-free head {h[c]['test_e2e']:.3f}")
+cv = {k: json.loads(Path(f"../results/cv/{k}.json").read_text())["detection"]["mAP50-95"] for k in ("finetuned_nms", "finetuned_e2e")}
+print("cross-validated test mAP50-95: NMS head %.3f +- %.3f, NMS-free head %.3f +- %.3f" %
+      (cv["finetuned_nms"]["mean"], cv["finetuned_nms"]["std"], cv["finetuned_e2e"]["mean"], cv["finetuned_e2e"]["std"]))
+
+### MD
+- Đầu ra một-một **thua ở mọi epoch**, không chỉ ở epoch được chọn. Khoảng cách thu hẹp dần khi huấn
+  luyện lâu hơn (từ khoảng 8 điểm ở epoch 1 xuống khoảng 2 điểm ở epoch 13), nên nó đúng là học chậm hơn,
+  nhưng không bắt kịp trước khi dừng sớm.
+- Chọn epoch theo đầu ra một-một vẫn chọn **đúng epoch 13**, và vì cùng hạt giống, hai lần huấn luyện cho
+  **trọng số giống hệt nhau**: dự đoán của a và e trùng nhau từng byte.
+- Vậy giả thuyết "do chọn epoch theo đầu ra có NMS" **bị bác bỏ**. Khoảng cách vẫn còn sau kiểm định chéo:
+  khoảng 3,5 điểm mAP50–95. Nguyên nhân thật (có thể là tốc độ học của đầu ra một-một khi đổi dữ liệu,
+  hoặc cách Ultralytics cân hai hàm mất mát) dự án chưa tìm ra.
 
 Hệ quả thực tế: sau fine-tune nên dùng đầu ra có NMS. NMS chỉ tốn khoảng 1 ms (notebook 06).
 
@@ -271,4 +296,5 @@ Hệ quả thực tế: sau fine-tune nên dùng đầu ra có NMS. NMS chỉ t�
   mỗi cụm. Bản tự cài khớp torchvision và Ultralytics.
 - Đầu ra **một-một** học cách không trùng lặp nên bỏ được NMS; với trọng số COCO nó ngang đầu ra có NMS.
 - Fine-tune toàn bộ từ trọng số COCO: mAP val đi ngang ngay từ epoch 1, epoch 4 được chọn theo đầu ra có NMS.
-- Sau fine-tune, đầu ra một-một thua (0,451 so với 0,477) và kéo nhiều khung chạm mép dưới; nguyên nhân chưa kiểm chứng.
+- Sau fine-tune, đầu ra một-một thua (0,451 so với 0,477) và kéo nhiều khung chạm mép dưới. Giả thuyết
+  "do chọn epoch" đã được kiểm chứng và bị bác bỏ: đầu ra một-một thua ở mọi epoch; nguyên nhân thật chưa rõ.

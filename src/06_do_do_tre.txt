@@ -2,7 +2,7 @@
 # 06 — Đo độ trễ: đồng bộ GPU, luật Amdahl, chi phí khởi chạy kernel, TensorRT, pipeline
 
 Kết luận về tốc độ của dự án: trên T4 của Kaggle, **giải nén ảnh PNG chậm hơn chạy mạng**; fp16
-trong PyTorch không nhanh hơn; TensorRT nhanh gấp 2,6 lần; giải nén song song đưa hệ thống lên 71
+trong PyTorch không nhanh hơn; TensorRT nhanh gấp khoảng 2,5 lần; giải nén song song đưa hệ thống lên 80
 khung/giây. Notebook này giải thích từng điều bằng khái niệm và kiểm chứng những gì kiểm được trên
 CPU của máy bạn. Số liệu GPU lấy từ `results/latency/`, đo trong **một phiên Kaggle duy nhất**.
 
@@ -83,10 +83,10 @@ plt.legend(ncol=4, fontsize=7, loc="lower right"); plt.show()
 
 ### MD
 Đọc biểu đồ:
-- **Giải nén** (decode) tốn 12–13 ms ở mọi cấu hình, nhiều hơn cả chạy mạng bằng PyTorch
-  (khoảng 10,5 ms).
-- **TensorRT** cắt phần mạng từ 10,5 xuống khoảng 4 ms.
-- Giảm đầu vào từ 1280 xuống 640 **gần như không** làm PyTorch nhanh hơn (10,1 so với 10,5 ms),
+- **Giải nén** (decode) tốn 11–12 ms ở mọi cấu hình, nhiều hơn cả chạy mạng bằng PyTorch
+  (khoảng 9,5 ms).
+- **TensorRT** cắt phần mạng từ 9,6 xuống 3,9 ms.
+- Giảm đầu vào từ 1280 xuống 640 **gần như không** làm PyTorch nhanh hơn (8,2 so với 9,6 ms),
   dù số điểm ảnh giảm hơn ba lần. Mục 5 giải thích vì sao.
 - NMS (postprocess 1,5 so với khoảng 0,6 ms) tốn khoảng 1 ms.
 
@@ -113,11 +113,12 @@ print(f"measured: {base['total']['median_ms'][0]:.1f} -> {trt['total']['median_m
       f"{base['total']['median_ms'][0] / trt['total']['median_ms'][0]:.2f}x")
 
 ### MD
-Mạng chỉ chiếm khoảng một phần ba thời gian, nên dù TensorRT nhanh gấp 2,6–2,7 lần, Amdahl chỉ
-hứa 1,27 lần cho cả hệ, và **không tối ưu mạng nào** đưa được hệ thống quá 1,52 lần chừng nào các
-chặng khác giữ nguyên. Đo được 1,43 lần, cao hơn dự báo, vì hai chặng khác cũng đổi: preprocess
-nhanh hơn 1,2 ms (TensorRT nhận đầu vào fp16), và giải nén trong lần đo đó nhanh hơn khoảng 1 ms
-(dao động của CPU giữa các cấu hình, cùng một phiên). Cộng lại: $30{,}7 - 6{,}5 - 1{,}2 - 1{,}0 \approx 22$ ms, khớp 21,5 ms. Đây cũng là bài học của vlm-speedrun: trước khi
+Mạng chỉ chiếm khoảng một phần ba thời gian, nên dù TensorRT nhanh gấp khoảng 2,5 lần, Amdahl chỉ
+hứa khoảng 1,26 lần cho cả hệ, và **không tối ưu mạng nào** đưa được hệ thống quá khoảng 1,5 lần chừng
+nào các chặng khác giữ nguyên. Đo được khoảng 1,4 lần, cao hơn dự báo, vì hai chặng khác cũng đổi:
+preprocess nhanh hơn khoảng 1,2 ms (TensorRT nhận đầu vào fp16), và giải nén trong lần đo đó nhanh hơn
+khoảng 1 ms (dao động của CPU giữa các cấu hình, cùng một phiên). Cộng lại:
+$27{,}3 - 5{,}7 - 1{,}2 - 1{,}0 \approx 19{,}4$ ms, khớp số đo. Đây cũng là bài học của vlm-speedrun: trước khi
 tối ưu, đo xem thời gian thật sự đi đâu.
 
 ## 5. Giới hạn khởi chạy kernel
@@ -148,41 +149,56 @@ print(f"measured PyTorch inference: {LAT['ft_1280']['inference']['median_ms'][0]
 Mạng chạy chậm hơn trần lý thuyết **hơn mười lần**. GPU không bận tính toán; nó chủ yếu **chờ**.
 Chờ gì? Ở chế độ eager, PyTorch chạy từng phép toán một: Python gọi xuống C++, C++ chuẩn bị tham
 số, khởi chạy một kernel lên GPU. Mỗi lần như vậy tốn vài micro giây trên CPU, bất kể kernel nhỏ
-hay lớn. Đếm số phép toán của một lần chạy mạng (trên CPU của bạn, một ảnh):
+hay lớn. Nếu chi phí đó đáng kể, GPU sẽ **ngồi chờ** giữa các kernel.
 
 **Ký hiệu mới**
 - **eager**: chế độ chạy từng phép toán ngay khi Python gặp nó, không biên dịch trước cả đồ thị
+- **CUDA graph**: bản ghi của cả một chuỗi kernel; sau khi ghi một lần, GPU phát lại cả chuỗi chỉ với
+  **một** lần khởi chạy từ CPU, nên không còn khoảng chờ giữa các kernel
+
+**Thí nghiệm quyết định.** Nếu GPU chờ CPU, thì phát lại đúng những kernel đó dưới dạng CUDA graph sẽ
+nhanh hơn hẳn; nếu GPU vốn bận tính, CUDA graph gần như không đổi gì. `monodist/profile_gpu.py` đo cả
+hai trên T4 (cùng phiên Kaggle với bảng ở mục 3), với đầu ra có NMS:
 
 ### CODE
-import torch
-from torch.profiler import profile, ProfilerActivity
-from ultralytics import YOLO
-torch.set_num_threads(4)
-net = YOLO("../weights/yolo26n.pt").model.fuse().eval()   # fused, as Ultralytics runs it
-x = torch.zeros(1, 3, 416, 1280)
-with torch.no_grad():
-    net(x)                                                     # warm-up
-    with profile(activities=[ProfilerActivity.CPU]) as prof:
-        net(x)
-n_ops = sum(e.count for e in prof.key_averages() if e.key.startswith("aten::"))
-t = LAT["ft_1280"]["inference"]["median_ms"][0]
-print(f"{n_ops} PyTorch operations per forward pass -> {t / n_ops * 1000:.1f} microseconds each on the Kaggle T4 run")
+prof = json.loads(Path("../results/latency/profile_nms.json").read_text())
+for dt in ("fp32", "fp16"):
+    r = prof[dt]
+    print(f"{dt}: {r['kernels_per_forward']:.0f} CUDA kernels per forward | eager {r['eager_wall_ms']:.1f} ms | "
+          f"CUDA graph replay {r['graph_wall_ms']:.1f} ms ({r['eager_wall_ms'] / r['graph_wall_ms']:.1f}x) | "
+          f"profiler's GPU busy time {r['gpu_busy_ms']:.1f} ms")
 
 ### MD
-Khoảng 1.300 phép toán, tức khoảng 8 micro giây cho mỗi phép. Đó đúng là cỡ chi phí gọi và khởi
-chạy một kernel từ Python trên CPU Xeon 2,0 GHz của Kaggle. Mạng bị giới hạn bởi **số lần khởi
-chạy**, không phải bởi số phép tính. Đây là suy luận từ ba dấu hiệu khớp nhau (trần lý thuyết,
-chi phí mỗi phép, và hai quan sát ngay dưới đây); dự án chưa đo trực tiếp bằng profiler trên GPU.
+Đọc kết quả:
+- Một lần chạy mạng khởi chạy khoảng **400 kernel** ở fp32 (480 ở fp16, vì thêm các kernel chuyển
+  kiểu dữ liệu).
+- Phát lại bằng CUDA graph: fp32 nhanh gần **2 lần**, fp16 nhanh hơn **3 lần**. Vậy chế độ eager đúng
+  là mất một phần lớn thời gian vào việc khởi chạy, và phần mất đó **lớn hơn ở fp16**: mỗi kernel fp16
+  tính nhanh hơn, nên khoảng chờ giữa chúng chiếm tỉ lệ lớn hơn.
+- Con số "GPU busy" của profiler **không đáng tin** để kết luận: ở fp32, thời gian GPU bận mà nó báo
+  (8,8 ms) còn lớn hơn cả thời gian phát lại toàn bộ chuỗi kernel bằng CUDA graph (5,5 ms), điều không
+  thể xảy ra nếu con số đó chính xác; ở một lần chạy thử trước, cùng phép đo còn cho tỉ lệ bận khác hẳn.
+  Profiler tự thêm chi phí vào từng kernel nó đo. Bằng chứng dùng được là thời gian phát lại, vì nó
+  không cần profiler.
+
+**Một đính chính.** Bản trước của notebook này đếm khoảng 1.300 phép toán PyTorch trên CPU rồi chia
+thời gian cho con số đó, ra "8 micro giây mỗi phép". Cách đó sai: nhiều phép toán PyTorch (đổi cách
+nhìn dữ liệu, như `view`) không khởi chạy kernel nào. Đo trực tiếp trên GPU chỉ có 400 kernel, và kết
+luận đúng là "bị giới hạn **một phần** bởi khởi chạy kernel", không phải "hoàn toàn".
+
 Từ đó:
-- **fp16 không giúp** (11,3 so với 10,5 ms): nó làm mỗi kernel tính nhanh hơn, nhưng kernel vốn đã
-  xong trước khi kernel sau kịp được gửi tới.
-- **Giảm đầu vào xuống 640 gần như không giúp** với PyTorch: số kernel vẫn vậy.
+- **fp16 không giúp trong PyTorch eager** (9,1 so với 9,6 ms trong đường chạy của Ultralytics; 11,3 so
+  với 10,3 ms khi gọi mạng trực tiếp): phần tính nhanh hơn bị khoảng chờ giữa các kernel nuốt mất. Có
+  CUDA graph thì fp16 chạy 3,3 ms.
+- **Giảm đầu vào xuống 640 gần như không giúp** với PyTorch (8,2 so với 9,6 ms): số kernel vẫn vậy.
+- **`torch.compile` với chế độ `reduce-overhead`** (cách PyTorch tự dùng CUDA graph) qua tham số
+  `compile` của Ultralytics **không** mang lại lợi ích đó trong phép đo (9,3 ms). Dự án chưa tìm hiểu
+  vì sao; lợi ích thấy được khi tự ghi CUDA graph ở trên.
 - **TensorRT giúp nhiều**: Ultralytics xuất mạng sang **ONNX** (một định dạng mô tả đồ thị tính
   toán, độc lập với PyTorch), rồi TensorRT, thư viện suy luận của NVIDIA, biên dịch cả đồ thị đó
-  trước, **gộp** nhiều phép toán liền nhau (tích
-  chập, chuẩn hoá, hàm kích hoạt) thành một kernel, chọn sẵn kernel nhanh nhất cho T4, rồi chạy cả
-  đồ thị từ C++ mà không quay lại Python. Số lần khởi chạy giảm mạnh, và khi đó độ phân giải bắt
-  đầu có ý nghĩa: 640 chạy 2,7 ms so với 3,9 ms ở 1280.
+  trước, **gộp** nhiều phép toán liền nhau (tích chập, chuẩn hoá, hàm kích hoạt) thành một kernel,
+  chọn sẵn kernel nhanh nhất cho T4, rồi chạy cả đồ thị từ C++. Kết quả 3,9 ms ở 1280, và khi đó độ
+  phân giải bắt đầu có ý nghĩa: 640 chạy 2,7 ms.
 
 ## 6. Giải nén PNG
 
@@ -206,7 +222,8 @@ print(f"JPEG: {np.mean([len(b) for b in jpg]) / 1e3:6.0f} KB, decode {per_frame_
 print(f"Kaggle run, PNG decode: {LAT['ft_1280']['decode']['median_ms'][0]:.1f} ms")
 
 ### MD
-Máy bạn nhanh hơn CPU của Kaggle, nhưng tỉ lệ vẫn giữ: JPEG giải nén nhanh hơn PNG vài lần. Trong
+Con số tuyệt đối tuỳ máy và tuỳ lúc máy bận hay rảnh, nhưng tỉ lệ vẫn giữ: JPEG giải nén nhanh hơn
+PNG vài lần. Trong
 một hệ thống thật, chặng này phụ thuộc vào định dạng camera gửi tới, không phải vào mô hình.
 
 ## 7. Pipeline
@@ -254,8 +271,9 @@ print("Kaggle, fine-tuned + NMS, TensorRT: serial %.0f FPS, pipelined %.0f FPS" 
 
 ### MD
 Mô phỏng gần công thức: thấp hơn lý thuyết vài phần trăm đến khoảng 15%, là chi phí của
-`sleep` và của việc chuyển qua lại giữa hai luồng. Trên Kaggle, TensorRT cộng pipeline đạt khoảng 71 khung/giây. Giới hạn
-kế tiếp là chính luồng giải nén: $1/12{,}5\text{ ms} = 80$ khung/giây. Muốn nhanh hơn nữa phải giải
+`sleep` và của việc chuyển qua lại giữa hai luồng. Trên Kaggle, TensorRT cộng pipeline đạt khoảng 80 khung/giây. Giới hạn
+đã sát giới hạn của chính luồng giải nén: đọc cộng giải nén khoảng 11,8 ms, tức tối đa khoảng
+$1/11{,}8\text{ ms} \approx 85$ khung/giây. Muốn nhanh hơn nữa phải giải
 nén song song nhiều khung (nhiều luồng) hoặc đổi định dạng đầu vào, không phải tối ưu thêm mạng.
 
 ## Tóm tắt
@@ -263,6 +281,7 @@ nén song song nhiều khung (nhiều luồng) hoặc đổi định dạng đ�
 - Độ trễ là thời gian cho một khung; thông lượng là số khung mỗi giây; pipeline tăng thông lượng, không giảm độ trễ.
 - Đo GPU phải đồng bộ trước khi đọc đồng hồ; dự án dùng bộ bấm giờ có đồng bộ của Ultralytics.
 - Luật Amdahl: mạng chỉ chiếm một phần ba thời gian nên tối ưu mạng có trần khoảng 1,5 lần.
-- YOLO26n trong PyTorch bị giới hạn bởi khoảng 1.300 lần khởi chạy kernel (cỡ 8 µs mỗi lần), không
-  bởi tính toán; vì vậy fp16 và giảm độ phân giải gần như vô ích, còn TensorRT (gộp kernel, chạy từ C++) nhanh gấp 2,6 lần.
-- Giải nén PNG là chặng chậm nhất; pipeline che nó đi, đạt 71 khung/giây, trần kế tiếp khoảng 80.
+- YOLO26n trong PyTorch eager bị giới hạn **một phần** bởi 400 lần khởi chạy kernel: phát lại bằng CUDA
+  graph nhanh gần 2 lần ở fp32, hơn 3 lần ở fp16. Vì vậy fp16 và giảm độ phân giải gần như vô ích ở chế
+  độ eager, còn TensorRT (gộp kernel, chạy từ C++) nhanh gấp khoảng 2,5 lần.
+- Giải nén PNG là chặng chậm nhất; pipeline che nó đi, đạt 80 khung/giây.

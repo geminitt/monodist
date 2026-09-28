@@ -167,8 +167,8 @@ cũng bị hiệu ứng tương tự với chiều dài hiệu dụng khác đi.
 
 **Hệ quả ngược đời (xuất hiện trong kết quả cuối):** bộ nhận diện càng giống nhãn thì công
 thức càng sai. Khung của YOLO huấn luyện trên COCO không ôm trọn chiều dài xe như nhãn KITTI;
-sau fine-tune, khung giống nhãn hơn, và sai số của công thức kích thước với ô tô **tăng** từ
-7,9% lên 9,8%. Sai số đó không đến từ bộ nhận diện kém đi, mà từ giả định 2 của công thức.
+sau fine-tune, khung giống nhãn hơn, và sai số của công thức kích thước với ô tô không bị cắt **tăng**
+từ 7,9% lên 9,8% trên phép chia cố định (kiểm định chéo 3 phần ở README: từ 8,7% lên 10,6%). Sai số đó không đến từ bộ nhận diện kém đi, mà từ giả định 2 của công thức.
 
 ## 4. Mặt phẳng sàn
 

@@ -7,6 +7,10 @@ qua, precision và recall đánh đổi nhau ra sao, và vì sao chỉ số cu�
 qua mười ngưỡng IoU. Mọi phép tính chạy trên **dự đoán thật** của hai bộ nhận diện trong
 `results/det/`.
 
+*Số liệu trong notebook này lấy từ **phép chia cố định** (8 chuỗi test), dùng để minh hoạ khái niệm.
+README báo kết quả của **kiểm định chéo 3 phần** trên cả 21 chuỗi (mAP50–95: 0,395 ± 0,061 với trọng
+số COCO, 0,464 ± 0,024 sau fine-tune có NMS); notebook 05, mục 8 giải thích cách đó.*
+
 | Mục | Câu hỏi |
 |---|---|
 | 1. IoU | Hai khung "trùng" nhau bao nhiêu? |

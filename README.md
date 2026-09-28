@@ -13,10 +13,10 @@ Read them in order; each notebook only uses concepts introduced earlier.
 | `00_camera_lo_kim_va_kitti` | pinhole camera, intrinsics and the KITTI projection matrix, labels, depth vs distance, scale ambiguity |
 | `01_hai_cong_thuc_khoang_cach` | known-size and ground-plane formulas, error propagation, the box-length effect, how flat KITTI roads are |
 | `02_danh_gia_bo_nhan_dien` | IoU, greedy matching, KITTI ignore rules, precision and recall, AP, mAP50-95, F1 operating point |
-| `03_yolo26_nms_va_fine_tune` | dense predictions and strides, NMS (implemented and checked), the one-to-one head, fine-tuning, overfitting signs |
+| `03_yolo26_nms_va_fine_tune` | dense predictions and strides, NMS (implemented and checked), the one-to-one head, fine-tuning, overfitting signs, a rejected hypothesis |
 | `04_mang_hoc_khoang_cach` | the distance MLP: log target, L1 vs L2, standardization, data leakage, leave-one-sequence-out, seed ensembles |
-| `05_thong_ke_cho_ket_qua` | standard error, confidence intervals, bootstrap, intra-class correlation, cluster bootstrap, paired comparisons |
-| `06_do_do_tre` | latency vs throughput, GPU timing, Amdahl's law, kernel-launch limits, fp16, TensorRT, PNG decoding, pipelining |
+| `05_thong_ke_cho_ket_qua` | standard error, confidence intervals, bootstrap, intra-class correlation, cluster bootstrap, paired comparisons, the three-fold cross-validation |
+| `06_do_do_tre` | latency vs throughput, GPU timing, Amdahl's law, kernel launches and CUDA graphs, fp16, TensorRT, PNG decoding, pipelining |
 
 ## Setup
 

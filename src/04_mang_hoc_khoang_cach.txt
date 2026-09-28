@@ -3,7 +3,9 @@
 
 Hai công thức ở notebook 01 mỗi cái chỉ dùng một manh mối (chiều cao khung, hoặc cạnh dưới) và
 một giả định cứng. Mạng ở đây đọc **cùng khung bao đó** nhưng tự học cách kết hợp các manh mối
-từ hàng chục nghìn ví dụ có LiDAR. Nó thắng cả hai công thức: 7,9% so với 18,1% và 31,5%.
+từ hàng chục nghìn ví dụ có LiDAR. Nó thắng cả hai công thức: 7,9% so với 18,1% và 31,5% trên phép
+chia cố định mà notebook này dùng; kiểm định chéo 3 phần trên cả 21 chuỗi (README) cho 8,1% so với
+12,6% và 24,0%.
 Notebook này đi qua từng quyết định thiết kế và kiểm chứng từng cái bằng thí nghiệm nhỏ trên
 dữ liệu thật; mọi thứ chạy trên CPU.
 
