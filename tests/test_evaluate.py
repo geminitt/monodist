@@ -4,7 +4,7 @@ from monodist import evaluate, kitti
 
 
 def oracle_detections(root, out, jitter=0.0, seed=0):
-    """Labelled boxes of every sequence written as if a detector had produced them."""
+    """Labeled boxes of every sequence written as if a detector had produced them."""
     rng = np.random.default_rng(seed)
     out.mkdir()
     for seq in kitti.SEQUENCES:

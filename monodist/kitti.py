@@ -1,9 +1,9 @@
-"""KITTI tracking: labels, calibration and the fixed sequence split."""
+"""KITTI tracking: labels, calibration, the fixed sequence split and the three cross-validation folds."""
 from pathlib import Path
 
 import numpy as np
 
-# Fixed split by sequence (never by frame: neighbouring frames are near duplicates).
+# Fixed split by sequence (never by frame: neighboring frames are near duplicates).
 # Chosen so that Car and Pedestrian are each close to 60/20/20 in instances and in tracks.
 SPLIT = {
     "train": ["0001", "0005", "0008", "0009", "0013", "0018", "0019", "0020"],
@@ -26,9 +26,9 @@ FOLDS = [
      "train": ["0007", "0009", "0012", "0014", "0017", "0019", "0020"]},
 ]
 CLASSES = ("Car", "Pedestrian")
-EXTRA_CLASSES = ("Van", "Cyclist")  # optionally labelled when fine-tuning; never evaluated
-# A detection on a neighbouring class counts neither as a hit nor as a false alarm (as in the KITTI devkit).
-NEIGHBOURS = {"Van": "Car", "Person": "Pedestrian"}
+EXTRA_CLASSES = ("Van", "Cyclist")  # optionally labeled when fine-tuning; never evaluated
+# A detection on a neighboring class counts neither as a hit nor as a false alarm (as in the KITTI devkit).
+NEIGHBORS = {"Van": "Car", "Person": "Pedestrian"}
 
 
 def training_dir(root):
@@ -41,7 +41,7 @@ def training_dir(root):
 
 
 def load_labels(root, seq):
-    """One sequence of label_02 as a dict of arrays, one row per labelled object per frame."""
+    """One sequence of label_02 as a dict of arrays, one row per labeled object per frame."""
     rows = [line.split() for line in open(training_dir(root) / "label_02" / f"{seq}.txt")]
     num = np.array([[float(v) for i, v in enumerate(r) if i != 2] for r in rows]).reshape(-1, 16)
     return {
@@ -51,14 +51,14 @@ def load_labels(root, seq):
         "trunc": num[:, 2].astype(int),
         "occ": num[:, 3].astype(int),
         "box": num[:, 5:9],          # x1, y1, x2, y2 in pixels (camera 2 image)
-        "dim": num[:, 9:12],         # height, width, length in metres
-        "loc": num[:, 12:15],        # bottom centre of the 3D box, rectified camera-0 frame
+        "dim": num[:, 9:12],         # height, width, length in meters
+        "loc": num[:, 12:15],        # bottom center of the 3D box, rectified camera-0 frame
         "ry": num[:, 15],
     }
 
 
 def load_calib(root, seq):
-    """Projection matrix P2 (3x4) of the left colour camera."""
+    """Projection matrix P2 (3x4) of the left color camera."""
     for line in open(training_dir(root) / "calib" / f"{seq}.txt"):
         if line.startswith("P2:"):
             return np.array(line.split()[1:], float).reshape(3, 4)
@@ -84,7 +84,7 @@ def project(points, P2):
 
 
 def box_corners(dim, loc, ry):
-    """The 8 corners (8, 3) of one labelled 3D box."""
+    """The 8 corners (8, 3) of one labeled 3D box."""
     h, w, l = dim
     x = np.array([l, l, -l, -l, l, l, -l, -l]) / 2
     y = np.array([0, 0, 0, 0, -h, -h, -h, -h])

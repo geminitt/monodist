@@ -15,7 +15,7 @@ runs/
 *.onnx
 kaggle/*/build*/
 notes/
-# detections of every fold x configuration are in the v0.2 release; only the kept ones are tracked
+# detections of every fold x configuration are in the cross-validation-weights-and-detections release; only the kept ones are tracked
 results/cv/det/*
 !results/cv/det/f0_b_nms/
 !results/cv/det/f0_b_e2e/

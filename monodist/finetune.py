@@ -6,10 +6,10 @@ Ultralytics saves last.pt every epoch; rerunning the same command resumes an int
 the best epoch is chosen on the val sequences by Ultralytics' fitness (0.1 mAP50 + 0.9 mAP50-95).
 
 Configurations compared on val in the cross-validation (see kaggle/cv):
-  a  defaults: Car and Pedestrian labelled; optimizer "auto" picks AdamW, lr0 0.0017 (0.00125 with 4 classes)
+  a  defaults: Car and Pedestrian labeled; optimizer "auto" picks AdamW, lr0 0.0017 (0.00125 with 4 classes)
   b  a with a lower learning rate (AdamW, lr0 0.0005)
-  c  a with Van and Cyclist labelled as their own classes
-  d  c with the DontCare regions painted grey
+  c  a with Van and Cyclist labeled as their own classes
+  d  c with the DontCare regions painted gray
   e  a, but the epoch is chosen with the NMS-free (one-to-one) head instead of the NMS head
 """
 import argparse

@@ -3,7 +3,7 @@ import numpy as np
 from monodist import kitti, yolo_data
 
 
-def test_yolo_lines_normalise_and_clip():
+def test_yolo_lines_normalize_and_clip():
     lines = yolo_data.yolo_lines(np.array([[-10, 0, 100, 50], [5, 5, 5.5, 6]]), [1, 0], 200, 100)
     assert lines == ["1 0.250000 0.250000 0.500000 0.500000"]  # clipped to x in [0, 100]; the sub-pixel box is dropped
 
@@ -36,14 +36,14 @@ def test_extra_classes_and_dontcare_mask(root, tmp_path):
     x1, y1, x2, y2 = lab["box"][(lab["frame"] == 0) & (lab["type"] == "DontCare")][0]
     import cv2
     pixels = cv2.imread(str(img))[int(y1) + 1:int(y2), int(x1) + 1:int(x2)]
-    assert (pixels == yolo_data.GREY).all()
+    assert (pixels == yolo_data.GRAY).all()
     ids = [int(l.split()[0]) for l in (tmp_path / "labels" / "test" / "0012_000000.txt").read_text().splitlines()]
-    assert classes.index("Cyclist") in ids                   # the cyclist of frame 0 is now labelled
+    assert classes.index("Cyclist") in ids                   # the cyclist of frame 0 is now labeled
     assert "3: Cyclist" in (tmp_path / "kitti.yaml").read_text()
 
 
 def test_masked_leaves_the_rest_untouched():
     img = np.zeros((10, 10, 3), np.uint8)
     out = yolo_data.masked(img, [[2, 2, 4, 4]])
-    assert (out[2:5, 2:5] == yolo_data.GREY).all() and out.sum() == 9 * 3 * yolo_data.GREY
+    assert (out[2:5, 2:5] == yolo_data.GRAY).all() and out.sum() == 9 * 3 * yolo_data.GRAY
     assert img.sum() == 0

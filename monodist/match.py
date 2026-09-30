@@ -1,4 +1,4 @@
-"""Matching detections to labelled objects, detection AP, and the matched pairs the distance methods use."""
+"""Matching detections to labeled objects, detection AP, and the matched pairs the distance methods use."""
 from collections import defaultdict
 
 import numpy as np
@@ -11,7 +11,7 @@ TP, FP, IGNORED = 1, 0, -1
 
 
 def ground_truth(root, seqs):
-    """Per (seq, frame): labelled objects of the two classes, neighbour boxes and DontCare boxes."""
+    """Per (seq, frame): labeled objects of the two classes, neighbor boxes and DontCare boxes."""
     gt = {}
     for seq in seqs:
         lab = kitti.load_labels(root, seq)
@@ -28,8 +28,8 @@ def ground_truth(root, seqs):
                 "z": z[m][obj],
                 "trunc": lab["trunc"][m][obj],
                 "occ": lab["occ"][m][obj],
-                "neighbour_box": lab["box"][m][np.isin(t, list(kitti.NEIGHBOURS))],
-                "neighbour_cls": np.array([kitti.CLASSES.index(kitti.NEIGHBOURS[c]) for c in t if c in kitti.NEIGHBOURS], int),
+                "neighbor_box": lab["box"][m][np.isin(t, list(kitti.NEIGHBORS))],
+                "neighbor_cls": np.array([kitti.CLASSES.index(kitti.NEIGHBORS[c]) for c in t if c in kitti.NEIGHBORS], int),
                 "dontcare": lab["box"][m][t == "DontCare"],
             }
     return gt
@@ -58,7 +58,7 @@ def match_frame(det_box, det_score, det_cls, g, thresholds=IOU_THRESHOLDS):
         return status, gt_idx
     order = np.argsort(-det_score, kind="stable")
     ious = iou(det_box, g["box"])
-    nious = iou(det_box, g["neighbour_box"])
+    nious = iou(det_box, g["neighbor_box"])
     dontcare = _covered(det_box, g["dontcare"]) >= 0.5
     for ti, thr in enumerate(thresholds):
         taken = np.zeros(len(g["box"]), bool)
@@ -70,7 +70,7 @@ def match_frame(det_box, det_score, det_cls, g, thresholds=IOU_THRESHOLDS):
                     status[d, ti], gt_idx[d, ti] = TP, j
                     taken[j] = True
                     continue
-            same = g["neighbour_cls"] == det_cls[d]
+            same = g["neighbor_cls"] == det_cls[d]
             if (same.any() and nious[d, same].max() >= thr) or dontcare[d]:
                 status[d, ti] = IGNORED
     return status, gt_idx
@@ -125,7 +125,7 @@ def detection_report(det, gt, status, thresholds=IOU_THRESHOLDS):
 
 
 def f1_threshold(score, status, n_gt):
-    """The score threshold that maximises F1 (IoU >= 0.5 status column), ignoring IGNORED detections."""
+    """The score threshold that maximizes F1 (IoU >= 0.5 status column), ignoring IGNORED detections."""
     keep = status != IGNORED
     score, tp = score[keep], status[keep] == TP
     if n_gt == 0 or len(score) == 0:
@@ -142,7 +142,7 @@ def per_detection_conf(det, thresholds):
 
 
 def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
-    """One row per detection that hits a labelled object at IoU >= 0.5 with score >= conf (scalar or per detection)."""
+    """One row per detection that hits a labeled object at IoU >= 0.5 with score >= conf (scalar or per detection)."""
     rows = np.where((status[:, iou_col] == TP) & (det["score"] >= conf))[0]
     cols = defaultdict(list)
     for i in rows:
@@ -160,7 +160,7 @@ def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
 
 
 def recall_by_distance(det, gt, status, gt_idx, conf, bins, iou_col=0):
-    """Share of labelled objects found (score >= conf, IoU >= 0.5), per class and distance bin."""
+    """Share of labeled objects found (score >= conf, IoU >= 0.5), per class and distance bin."""
     hit = set()
     for i in np.where((status[:, iou_col] == TP) & (det["score"] >= conf))[0]:
         hit.add((det["seq"][i], det["frame"][i], gt_idx[i, iou_col]))

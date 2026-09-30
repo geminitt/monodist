@@ -20,12 +20,12 @@
   "ultralytics": "8.4.163"
  },
  "results": {
-  "results/finetune": {"kernel": "spritker/monodist-finetune (mode full)", "commit": "0cd84449d2dfeb0e4c0ff6fde6fab8cc0f1c24dc", "content": "fine-tuning curve and arguments of the fixed-split model (release v0.1)"},
+  "results/finetune": {"kernel": "spritker/monodist-finetune (mode full)", "commit": "0cd84449d2dfeb0e4c0ff6fde6fab8cc0f1c24dc", "content": "fine-tuning curve and arguments of the fixed-split model (release fixed-split-weights)"},
   "results/det/coco_1280, ft_1280, ft_1280_fp16, ft_640": {"kernel": "spritker/monodist-eval (mode full)", "commit": "7f9160fcca2e53671ffbf7e08e746d4b20d1c872", "content": "detections on all 21 sequences; coco_1280 is also the baseline of the cross-validation"},
   "results/det/coco_1280_nms, ft_1280_nms, ft_1280_trt16, ft_640_trt16": {"kernel": "spritker/monodist-eval (mode full, four configurations)", "commit": "9810fc2071ba5437d853fad860e1cd20abc87353"},
   "results/det/ft_1280_nms_trt16": {"kernel": "spritker/monodist-eval (mode full, detection of this configuration only)", "commit": "e4a37395507d36d5b372767c63bd9f02256486e6"},
   "results/latency": {"kernel": "spritker/monodist-eval (mode latency)", "commit": "544b7e53900f4354fa38c5cfb35caff17f281ac9", "content": "every timing and the GPU profile, all from one session, with the fixed-split weights"},
-  "results/cv/det, results/cv/train": {"kernel": "spritker/monodist-cv-f<fold>-<config>, 13 kernels run by kaggle/queue.py", "commit": "544b7e53900f4354fa38c5cfb35caff17f281ac9", "content": "only the kept configurations are tracked; all of them and the fold weights are in release v0.2"},
+  "results/cv/det, results/cv/train": {"kernel": "spritker/monodist-cv-f<fold>-<config>, 13 kernels run by kaggle/queue.py", "commit": "544b7e53900f4354fa38c5cfb35caff17f281ac9", "content": "only the kept configurations are tracked; all of them and the fold weights are in release cross-validation-weights-and-detections"},
   "results/eval, results/cv/*.json, results/summary.md, README.md": {"produced_by": "python -m monodist.evaluate, python -m monodist.crossval, python -m monodist.report on the local CPU environment", "check": "CI runs python -m monodist.report --check"}
  },
  "note_on_commits": "The detections come from four commits (7f9160f, 9810fc2, e4a3739, 544b7e5); with the fixed-split fine-tuning (0cd8444) the results span five. Between them monodist/detect.py only gained the --nms option (default unchanged) and an explicit class filter [0, 1] that selects the same classes as before for two-class models, so each configuration's detection path behaves the same; a clean rerun at one commit was offered and declined on 2026-09-30 for lack of Kaggle quota."

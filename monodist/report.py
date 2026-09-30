@@ -22,7 +22,7 @@ RESULTS = Path("results")
 DETECTORS = {"coco": "COCO weights", "finetuned_nms": "fine-tuned, NMS", "finetuned_e2e": "fine-tuned, NMS-free"}
 METHODS = {"size": "known size", "ground": "ground plane", "mlp": "MLP"}
 CONFIG_NAMES = {"a": "a: defaults", "b": "b: lower learning rate", "c": "c: + Van, Cyclist classes",
-                "d": "d: c + DontCare greyed", "e": "e: epoch chosen by NMS-free head"}
+                "d": "d: c + DontCare grayed", "e": "e: epoch chosen by NMS-free head"}
 
 
 def load(path):
@@ -64,7 +64,7 @@ def values():
             v[f"{det}.{m}.ci"] = ci(s["all"]["absrel_mean"])
             v[f"{det}.{m}.median"] = pct(s["all"]["absrel_median"][0])
             v[f"{det}.{m}.track"] = pct(s["all"]["absrel_track_mean"][0])
-            v[f"{det}.{m}.metres"] = f"{s['all']['abs_m_mean']:.1f}"
+            v[f"{det}.{m}.meters"] = f"{s['all']['abs_m_mean']:.1f}"
             for c in kitti.CLASSES:
                 v[f"{det}.{m}.{c}"] = pct(s[c]["absrel_mean"][0])
                 v[f"{det}.{m}.{c}.whole"] = pct(s[f"{c} not truncated"]["absrel_mean"][0])

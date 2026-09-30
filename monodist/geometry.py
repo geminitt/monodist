@@ -1,6 +1,6 @@
 """Distance from one camera: the two geometric methods and the features of the learned one.
 
-All distances are depths Z along the optical axis of camera 2, in metres.
+All distances are depths Z along the optical axis of camera 2, in meters.
 Boxes are (N, 4) arrays of x1, y1, x2, y2 in pixels; classes are indices into kitti.CLASSES.
 """
 import numpy as np

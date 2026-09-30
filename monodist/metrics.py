@@ -40,7 +40,7 @@ def cluster_bootstrap(values, clusters, stat=np.mean, n_boot=2000, seed=0):
 
 
 def summarize(pred, true, clusters, n_boot=2000):
-    """Mean and median AbsRel with cluster-bootstrap intervals, plus the mean error in metres."""
+    """Mean and median AbsRel with cluster-bootstrap intervals, plus the mean error in meters."""
     if len(true) == 0:
         return {"n": 0, "tracks": 0}
     e = abs_rel(pred, true)

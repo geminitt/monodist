@@ -80,7 +80,7 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150):
     tm = np.isin(det["seq"], split["test"])
     tdet = {k: v[tm] for k, v in det.items()}
     # Operating point: per class, the score threshold with the best F1 on the val sequences. A fixed 0.25 would
-    # favour whichever detector happens to output higher scores; fine-tuning changes the score scale.
+    # favor whichever detector happens to output higher scores; fine-tuning changes the score scale.
     val_gt = {k: v for k, v in gt.items() if k[0] in split["val"]}
     vm = np.isin(det["seq"], split["val"])
     conf = [match.f1_threshold(det["score"][vm & (det["cls"] == c)], status[vm & (det["cls"] == c), 0],
@@ -144,7 +144,7 @@ def breakdown(preds, rows, n_boot):
 def summarize(rows, n_boot=2000):
     """The distance tables from per-object rows (one split, or all folds pooled)."""
     return {"distance": breakdown({m: rows[f"pred_{m}"] for m in METHODS}, rows, n_boot),
-            # error floor of the geometric methods: the same formulas on the labelled boxes of the same objects
+            # error floor of the geometric methods: the same formulas on the labeled boxes of the same objects
             "distance_on_label_boxes": breakdown({m: rows[f"label_{m}"] for m in ("size", "ground")}, rows, n_boot),
             "ground_fallback_share": float(np.mean(rows["fallback"]))}
 

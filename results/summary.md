@@ -1,6 +1,6 @@
 ## selection
 
-| val mAP50-95 | a: defaults | b: lower learning rate | c: + Van, Cyclist classes | d: c + DontCare greyed |
+| val mAP50-95 | a: defaults | b: lower learning rate | c: + Van, Cyclist classes | d: c + DontCare grayed |
 |---|---|---|---|---|
 | fold 0 | 0.464 | **0.476** | 0.446 | 0.444 |
 | fold 1 | 0.505 | **0.521** | 0.512 | 0.503 |

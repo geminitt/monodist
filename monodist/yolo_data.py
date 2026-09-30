@@ -1,9 +1,9 @@
-"""Write a KITTI split in the YOLO dataset layout (images + normalised box labels) for fine-tuning.
+"""Write a KITTI split in the YOLO dataset layout (images + normalized box labels) for fine-tuning.
 
 Class ids follow `classes`: by default 0 = Car, 1 = Pedestrian; with the extra classes also 2 = Van,
 3 = Cyclist, so the detector learns them as their own classes instead of as background. With
-mask_dontcare, DontCare regions are painted grey (114, the letterbox colour) in copies of the images, so
-unlabelled objects there are not taught as background either.
+mask_dontcare, DontCare regions are painted gray (114, the letterbox color) in copies of the images, so
+unlabeled objects there are not taught as background either.
 """
 import argparse
 import os
@@ -15,11 +15,11 @@ from PIL import Image
 
 from . import kitti
 
-GREY = 114
+GRAY = 114
 
 
 def yolo_lines(boxes, classes, w, h):
-    """Box rows 'cls cx cy bw bh', normalised to [0, 1], boxes clipped to the image."""
+    """Box rows 'cls cx cy bw bh', normalized to [0, 1], boxes clipped to the image."""
     b = np.asarray(boxes, float).reshape(-1, 4).copy()
     b[:, [0, 2]] = b[:, [0, 2]].clip(0, w)
     b[:, [1, 3]] = b[:, [1, 3]].clip(0, h)
@@ -32,10 +32,10 @@ def yolo_lines(boxes, classes, w, h):
 
 
 def masked(image, regions):
-    """A copy of the image with the given boxes filled grey."""
+    """A copy of the image with the given boxes filled gray."""
     out = image.copy()
     for x1, y1, x2, y2 in np.asarray(regions, float).reshape(-1, 4):
-        out[int(max(y1, 0)):int(np.ceil(y2)) + 1, int(max(x1, 0)):int(np.ceil(x2)) + 1] = GREY
+        out[int(max(y1, 0)):int(np.ceil(y2)) + 1, int(max(x1, 0)):int(np.ceil(x2)) + 1] = GRAY
     return out
 
 

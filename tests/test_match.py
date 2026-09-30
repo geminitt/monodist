@@ -3,16 +3,16 @@ import numpy as np
 from monodist import match
 
 
-def frame(boxes, cls, neighbour=(), neighbour_cls=(), dontcare=()):
+def frame(boxes, cls, neighbor=(), neighbor_cls=(), dontcare=()):
     n = len(boxes)
     return {"box": np.array(boxes, float).reshape(-1, 4), "cls": np.array(cls, int), "track": np.arange(n),
             "z": np.full(n, 10.0), "trunc": np.zeros(n, int), "occ": np.zeros(n, int),
-            "neighbour_box": np.array(neighbour, float).reshape(-1, 4), "neighbour_cls": np.array(neighbour_cls, int),
+            "neighbor_box": np.array(neighbor, float).reshape(-1, 4), "neighbor_cls": np.array(neighbor_cls, int),
             "dontcare": np.array(dontcare, float).reshape(-1, 4)}
 
 
 def test_match_frame_statuses():
-    g = frame([[0, 0, 10, 10], [20, 0, 30, 10]], [0, 1], neighbour=[[40, 0, 50, 10]], neighbour_cls=[0],
+    g = frame([[0, 0, 10, 10], [20, 0, 30, 10]], [0, 1], neighbor=[[40, 0, 50, 10]], neighbor_cls=[0],
               dontcare=[[60, 0, 80, 20]])
     det_box = np.array([[0, 0, 10, 10],      # hits car 0
                         [0, 0, 10, 10],      # duplicate of the same car -> FP

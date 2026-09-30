@@ -18,7 +18,7 @@ camera, and measure what each stage of the pipeline costs on a Kaggle T4.**
 
 ## Result in one paragraph
 
-Over a three-fold cross-validation that tests every one of the 21 labelled KITTI sequences once, a
+Over a three-fold cross-validation that tests every one of the 21 labeled KITTI sequences once, a
 5k-parameter MLP that reads only the detected box estimates distance with a **mean relative error of
 {coco.mlp.ci}** (median {coco.mlp.median}), using YOLO26n with its COCO weights and no detector training at
 all. The textbook pinhole formula $Z = fH/h$ gets {coco.size.mean} and the flat-road formula
@@ -37,7 +37,7 @@ frames per second**.
 | Axis | Options |
 |---|---|
 | Detector | YOLO26n with its COCO weights (never trained); YOLO26n fine-tuned on KITTI, per fold |
-| Fine-tuning configuration, chosen per fold on val | a: defaults · b: lower learning rate · c: Van and Cyclist labelled as their own classes · d: c with the DontCare regions painted grey |
+| Fine-tuning configuration, chosen per fold on val | a: defaults · b: lower learning rate · c: Van and Cyclist labeled as their own classes · d: c with the DontCare regions painted gray |
 | YOLO26 head | one-to-many head followed by NMS; NMS-free (one-to-one) head |
 | Distance from a box | **known size** $Z = fH/h$ ($H$ = mean class height); **ground plane** $Z = f\,h_\mathrm{cam}/(v_2 - c_y)$ (bottom edge on a flat road); **MLP** trained on the detector's own boxes |
 | Speed levers | fp16, TensorRT fp16, CUDA graphs, input 1280 vs 640, decoding the next frame on a worker thread |
@@ -46,7 +46,7 @@ frames per second**.
 
 ## Data and protocol
 
-- **KITTI tracking**, the 21 labelled sequences (8,008 frames), classes Car and Pedestrian; the official test
+- **KITTI tracking**, the 21 labeled sequences (8,008 frames), classes Car and Pedestrian; the official test
   sequences have no public labels. Ground truth is the depth z of the LiDAR-based 3D box in camera 2, with
   the calibration of each sequence (four calibrations, $f$ = 707 to 722 px).
 - **Three-fold cross-validation by sequence** (`kitti.FOLDS`): each sequence is test exactly once; the other
@@ -76,7 +76,7 @@ All tables, generated from `results/`, are also in [results/summary.md](results/
 
 {table:selection}
 
-Labelling vans and cyclists, with or without greying DontCare regions, never won a fold (c came second in
+Labeling vans and cyclists, with or without graying DontCare regions, never won a fold (c came second in
 fold 1); a lower learning rate won two folds by about a point over the defaults.
 
 ### Detection (test, per fold, mean ± standard deviation over folds)
@@ -123,14 +123,14 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
    and for cars closer than 10 m, most of them cut by the image border, {coco.mlp.Car.0-10} against
    {coco.size.Car.0-10}.
 2. **The known-size formula has a floor of about 10% on cars, even with perfect boxes.** KITTI measures depth
-   to the centre of the car, but a 2D box encloses the whole car: its bottom edge comes from the nearest face
-   and its top edge from the far end of the roof. For a car seen from behind, with the ground $y$ metres below
+   to the center of the car, but a 2D box encloses the whole car: its bottom edge comes from the nearest face
+   and its top edge from the far end of the roof. For a car seen from behind, with the ground $y$ meters below
    the camera, $\hat Z / z \approx 1 / \left(1 + \frac{l}{2z} \cdot \frac{2y - H}{H}\right)$, about 10% low at 25 m for a 4.3 m car,
-   which matches the labels (study notes, notebook 01). On the labelled boxes the formula scores
+   which matches the labels (study notes, notebook 01). On the labeled boxes the formula scores
    {coco.floor.size.Car.whole} on untruncated cars. A detector whose boxes look *more* like the labels makes
    it *worse*: {finetuned_nms.size.Car.whole} after fine-tuning against {coco.size.Car.whole} with the COCO
    weights.
-3. **The flat-road formula does not hold on KITTI.** The labelled ground points of cars lie between 1.38 and
+3. **The flat-road formula does not hold on KITTI.** The labeled ground points of cars lie between 1.38 and
    1.80 m below the camera (interquartile range), because of slopes and pitch; pedestrians stand about 16 cm
    higher, on the pavement; and half a degree of pitch moves the horizon by 6 px, a 23% error at 40 m.
 4. **Fine-tuning helps detection, not distance.** On the {compare.finetuned_nms.n} test object-frames both
@@ -193,7 +193,7 @@ Each one was found by checking a number that looked too good or too odd, and fix
    sequence; it was worse than the plain formula on pedestrians. It now trains on the train sequences.
 2. **Both TensorRT engines were written to the same file**, so a "1280" timing measured the 640 engine; the
    latency tool now refuses to run an engine at a shape other than the one asked for.
-3. **A fixed score threshold of 0.25** favoured whichever detector outputs higher scores; each detector now
+3. **A fixed score threshold of 0.25** favored whichever detector outputs higher scores; each detector now
    uses its F1-best threshold from val.
 4. **One MLP seed** moved the error by about a point; the prediction is now the average of five seeds.
 5. **Objects closer than 2 m** (all truncated) made AbsRel explode; they are excluded and counted.
@@ -209,7 +209,7 @@ Each one was found by checking a number that looked too good or too odd, and fix
 pixi install && pixi run test               # CPU tests, KITTI labels included in the repository
 
 # Kaggle (GPU T4, dataset leducnhuan/kitti-tracking), code pinned to the pushed HEAD:
-python kaggle/queue.py --commit $(git rev-parse HEAD)   # 13 fine-tuning jobs, two at a time, ~6 h of GPU
+python kaggle/queue.py --commit $(git rev-parse HEAD)   # 13 fine-tuning jobs, two at a time; measured: 9.6 GPU-hours in total, ~45 min each
 python kaggle/push.py eval --mode latency               # latency, CUDA graphs, kernel profile
 
 # the fixed-split experiments behind results/eval and the accuracy column of the latency table:
@@ -224,7 +224,8 @@ python -m monodist.report --write
 `results/cv/det/` holds the detections of the configurations kept in each fold and `results/det/` the COCO
 detections and the fixed-split experiments, so the evaluation reruns on a CPU. Rerunning the choice of
 configuration needs the detections of every fold and configuration, attached with the fold weights to the
-GitHub release `v0.2` (unzip into `results/cv/det/`). `results/MANIFEST.json` lists the commit, software and
+GitHub release `cross-validation-weights-and-detections` (unzip into `results/cv/det/`); the fixed-split
+weights are in the release `fixed-split-weights`. `results/MANIFEST.json` lists the commit, software and
 hardware behind each result.
 
 ---
