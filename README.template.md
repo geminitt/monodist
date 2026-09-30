@@ -1,10 +1,20 @@
+<div align="center">
+
 # monodist
 
-Detect cars and pedestrians in KITTI video with YOLO26n, estimate how far away they are from a single
-camera, and measure what each stage of the pipeline costs on a Kaggle T4.
+[![CI](https://img.shields.io/github/actions/workflow/status/geminitt/monodist/ci.yml?branch=main&label=CI&style=for-the-badge)](https://github.com/geminitt/monodist/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/PYTHON-3.12-A19654?style=for-the-badge)](./pixi.toml)
+[![License](https://img.shields.io/badge/LICENSE-AGPL--3.0-6B7F4E?style=for-the-badge)](./LICENSE)
+
+**Detect cars and pedestrians in KITTI video with YOLO26n, estimate how far away they are from a single
+camera, and measure what each stage of the pipeline costs on a Kaggle T4.**
+
+</div>
 
 <!-- README.md is generated from README.template.md and results/ by `python -m monodist.report --write`;
      CI fails when they disagree. Edit the template, never README.md. -->
+
+---
 
 ## Result in one paragraph
 
@@ -20,6 +30,8 @@ T4, decoding the PNG costs more than running the network; TensorRT fp16 cuts inf
 next frame on a worker thread takes the fine-tuned detector with NMS to **{lat.ft_1280_nms_trt16_pipelined.fps}
 frames per second**.
 
+---
+
 ## What is compared
 
 | Axis | Options |
@@ -29,6 +41,8 @@ frames per second**.
 | YOLO26 head | one-to-many head followed by NMS; NMS-free (one-to-one) head |
 | Distance from a box | **known size** Z = f H / h (H = mean class height); **ground plane** Z = f h_cam / (v2 - c_y) (bottom edge on a flat road); **MLP** trained on the detector's own boxes |
 | Speed levers | fp16, TensorRT fp16, CUDA graphs, input 1280 vs 640, decoding the next frame on a worker thread |
+
+---
 
 ## Data and protocol
 
@@ -51,6 +65,8 @@ frames per second**.
 - **Distance metric**: AbsRel = |Zhat - Z| / Z on matched test objects farther than 2 m, pooled over the
   folds. Intervals are **cluster bootstrap over tracks**: a car seen in 300 frames is one sample, not 300.
   Next to the usual per-frame mean, the per-object mean gives every tracked object the same weight.
+
+---
 
 ## Results
 
@@ -98,6 +114,8 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
 | fine-tuned, PyTorch fp32, 640 | {fixed.ft_640.map} | {lat.ft_640.decode} | {lat.ft_640.preprocess} | {lat.ft_640.inference} | {lat.ft_640.postprocess} | {lat.ft_640.total} | {lat.ft_640.fps} | |
 | fine-tuned, TensorRT fp16, 640 | {fixed.ft_640_trt16.map} | {lat.ft_640_trt16.decode} | {lat.ft_640_trt16.preprocess} | {lat.ft_640_trt16.inference} | {lat.ft_640_trt16.postprocess} | {lat.ft_640_trt16.total} | {lat.ft_640_trt16.fps} | {lat.ft_640_trt16_pipelined.fps} |
 
+---
+
 ## Findings
 
 1. **The box already contains most of the distance.** The MLP beats both formulas for both classes: for
@@ -137,6 +155,8 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
    {coco.recall.Pedestrian.40} of the {coco.recall.Pedestrian.total40} pedestrian object-frames; input 640
    instead of 1280 loses more far objects (fixed split).
 
+---
+
 ## Checks
 
 - **AP implementation**: on the fixed split's val sequences, without the ignore rules and with NMS, it gives
@@ -150,6 +170,8 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
 - **Precision**: PyTorch fp32, fp16 and TensorRT fp16 give the same mAP50-95 to three decimals.
 - **Every number in this README** is filled in from `results/` by `monodist/report.py`, and CI checks it.
 
+---
+
 ## Limitations
 
 - One fine-tuning run per fold and configuration; the spread over folds mixes data and seed variation.
@@ -160,6 +182,8 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
 - Latency is for one frame at a time on a Kaggle T4 with 4 CPU cores; PNG decoding depends on the CPU. The
   latency session used the fixed-split fine-tuned weights (same architecture as the fold models).
 - GPU code paths (detection, fine-tuning, latency) are tested by running them on Kaggle, not by CI.
+
+---
 
 ## Mistakes caught while doing this
 
@@ -176,6 +200,8 @@ Each one was found by checking a number that looked too good or too odd, and fix
 6. **Latency from different Kaggle sessions** is not comparable; all timings are from one session.
 7. **A test set of 8 sequences** held only 30 pedestrian tracks and one run of fine-tuning; the
    cross-validation now tests all 21 sequences and every configuration three times.
+
+---
 
 ## Reproduce
 
@@ -198,7 +224,10 @@ python -m monodist.report --write
 `results/cv/det/` holds the detections of the configurations kept in each fold and `results/det/` the COCO
 detections and the fixed-split experiments, so the evaluation reruns on a CPU. Rerunning the choice of
 configuration needs the detections of every fold and configuration, attached with the fold weights to the
-GitHub release `v0.2` (unzip into `results/cv/det/`).
+GitHub release `v0.2` (unzip into `results/cv/det/`). `results/MANIFEST.json` lists the commit, software and
+hardware behind each result.
+
+---
 
 ## Layout
 
@@ -212,6 +241,8 @@ GitHub release `v0.2` (unzip into `results/cv/det/`).
 | `monodist/latency.py`, `profile_gpu.py` | per-stage timing; kernel count and CUDA-graph replay |
 | `monodist/evaluate.py`, `crossval.py`, `report.py` | one split, the cross-validation, this README |
 | `kaggle/` | the Kaggle kernels, the push script and the job queue |
+
+---
 
 ## Data and license
 
