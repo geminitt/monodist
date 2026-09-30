@@ -124,7 +124,7 @@ k = kitti.intrinsics(P2)
 np.set_printoptions(precision=4, suppress=True)
 print("P2 =\n", P2)
 print(f"f = {k['f']:.2f} px, cx = {k['cx']:.1f}, cy = {k['cy']:.1f}")
-print("t = K^-1 * last column =", k["t"], "(metres)")
+print("t = K^-1 * last column =", k["t"], "(meters)")
 K = P2[:, :3]
 print("rebuild P2 from K and t:", np.allclose(np.hstack([K, (K @ k["t"])[:, None]]), P2))
 
