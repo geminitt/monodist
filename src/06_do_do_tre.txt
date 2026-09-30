@@ -270,8 +270,10 @@ print("Kaggle, fine-tuned + NMS, TensorRT: serial %.0f FPS, pipelined %.0f FPS" 
       (np.mean(LAT["ft_1280_nms_trt16"]["fps_per_round"]), np.mean(LAT["ft_1280_nms_trt16_pipelined"]["fps_per_round"])))
 
 ### MD
-Mô phỏng gần công thức: thấp hơn lý thuyết vài phần trăm đến khoảng 15%, là chi phí của
-`sleep` và của việc chuyển qua lại giữa hai luồng. Trên Kaggle, TensorRT cộng pipeline đạt khoảng 80 khung/giây. Giới hạn
+Mô phỏng gần công thức, lệch trong khoảng ±15% tuỳ lần chạy: thời gian giải nén dùng làm "lý thuyết" chỉ đo
+một lần và dao động theo lúc máy bận hay rảnh, còn `sleep` và việc chuyển qua lại giữa hai luồng có chi phí
+riêng. Điều không đổi qua các lần chạy là pipeline luôn gần mức $1/\max(t_\text{CPU}, t_\text{GPU})$,
+cao hơn hẳn chạy nối tiếp. Trên Kaggle, TensorRT cộng pipeline đạt khoảng 80 khung/giây. Con số đó
 đã sát giới hạn của chính luồng giải nén: đọc cộng giải nén khoảng 11,8 ms, tức tối đa khoảng
 $1/11{,}8\text{ ms} \approx 85$ khung/giây. Muốn nhanh hơn nữa phải giải
 nén song song nhiều khung (nhiều luồng) hoặc đổi định dạng đầu vào, không phải tối ưu thêm mạng.
