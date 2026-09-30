@@ -21,7 +21,7 @@ camera, and measure what each stage of the pipeline costs on a Kaggle T4.**
 Over a three-fold cross-validation that tests every one of the 21 labelled KITTI sequences once, a
 5k-parameter MLP that reads only the detected box estimates distance with a **mean relative error of
 8.1% [7.6, 8.6]** (median 5.4%), using YOLO26n with its COCO weights and no detector training at
-all. The textbook pinhole formula Z = f H / h gets 12.6% and the flat-road formula
+all. The textbook pinhole formula $Z = fH/h$ gets 12.6% and the flat-road formula
 24.0%. Fine-tuning the detector on KITTI raises mAP50-95 from 0.395 ± 0.061 to
 **0.464 ± 0.024**, but it does not make the distances better
 (8.9% [8.0, 10.1]; the same 9.6% as COCO when every object counts once). On the
@@ -39,7 +39,7 @@ frames per second**.
 | Detector | YOLO26n with its COCO weights (never trained); YOLO26n fine-tuned on KITTI, per fold |
 | Fine-tuning configuration, chosen per fold on val | a: defaults · b: lower learning rate · c: Van and Cyclist labelled as their own classes · d: c with the DontCare regions painted grey |
 | YOLO26 head | one-to-many head followed by NMS; NMS-free (one-to-one) head |
-| Distance from a box | **known size** Z = f H / h (H = mean class height); **ground plane** Z = f h_cam / (v2 - c_y) (bottom edge on a flat road); **MLP** trained on the detector's own boxes |
+| Distance from a box | **known size** $Z = fH/h$ ($H$ = mean class height); **ground plane** $Z = f\,h_\mathrm{cam}/(v_2 - c_y)$ (bottom edge on a flat road); **MLP** trained on the detector's own boxes |
 | Speed levers | fp16, TensorRT fp16, CUDA graphs, input 1280 vs 640, decoding the next frame on a worker thread |
 
 ---
@@ -48,7 +48,7 @@ frames per second**.
 
 - **KITTI tracking**, the 21 labelled sequences (8,008 frames), classes Car and Pedestrian; the official test
   sequences have no public labels. Ground truth is the depth z of the LiDAR-based 3D box in camera 2, with
-  the calibration of each sequence (four calibrations, f = 707 to 722 px).
+  the calibration of each sequence (four calibrations, $f$ = 707 to 722 px).
 - **Three-fold cross-validation by sequence** (`kitti.FOLDS`): each sequence is test exactly once; the other
   sequences of a fold split about 70/30 into train and val. Folds balance cars (instances and tracks) and
   pedestrian tracks; pedestrian instances cannot be balanced, since sequence 0019 alone holds 53% of them.
@@ -58,11 +58,11 @@ frames per second**.
   heights and the camera height come from the train labels; the MLP trains on the detector's boxes on the
   train sequences (epochs by leave-one-sequence-out, five seeds averaged); the score threshold of each class
   is the F1-best one on val. Nothing is chosen on test.
-- **Matching**: greedy by score, IoU >= 0.5, per class; as in the KITTI devkit a car detection on a Van and a
+- **Matching**: greedy by score, $\mathrm{IoU} \ge 0.5$, per class; as in the KITTI devkit a car detection on a Van and a
   pedestrian detection on a sitting Person count as neither hit nor false alarm, and detections inside
-  DontCare regions are ignored. mAP is COCO-style (101-point, IoU 0.50:0.95), per fold, reported as mean ±
+  DontCare regions are ignored. mAP is COCO-style (101-point, $\mathrm{IoU} = 0.50, 0.55, \dots, 0.95$), per fold, reported as mean ±
   standard deviation over the three folds.
-- **Distance metric**: AbsRel = |Zhat - Z| / Z on matched test objects farther than 2 m, pooled over the
+- **Distance metric**: $\mathrm{AbsRel} = \lvert \hat Z - Z \rvert / Z$ on matched test objects farther than 2 m, pooled over the
   folds. Intervals are **cluster bootstrap over tracks**: a car seen in 300 frames is one sample, not 300.
   Next to the usual per-frame mean, the per-object mean gives every tracked object the same weight.
 
@@ -107,7 +107,7 @@ fold 1); a lower learning rate won two folds by about a point over the defaults.
 
 Test set: 27,929 object-frames from 722 tracks for the COCO detector.
 
-### Recall by distance at the operating point (IoU >= 0.5)
+### Recall by distance at the operating point ($\mathrm{IoU} \ge 0.5$)
 
 | Detector | Class | 0-10 m | 10-20 m | 20-40 m | >40 m |
 |---|---|---|---|---|---|
@@ -149,8 +149,8 @@ column is mAP50-95 of the same weights on the earlier fixed split (see `results/
    46.8%.
 2. **The known-size formula has a floor of about 10% on cars, even with perfect boxes.** KITTI measures depth
    to the centre of the car, but a 2D box encloses the whole car: its bottom edge comes from the nearest face
-   and its top edge from the far end of the roof. For a car seen from behind, with the ground y metres below
-   the camera, Zhat / z is about 1 / (1 + (l / 2z)(2y - H) / H), about 10% low at 25 m for a 4.3 m car,
+   and its top edge from the far end of the roof. For a car seen from behind, with the ground $y$ metres below
+   the camera, $\hat Z / z \approx 1 / \left(1 + \frac{l}{2z} \cdot \frac{2y - H}{H}\right)$, about 10% low at 25 m for a 4.3 m car,
    which matches the labels (study notes, notebook 01). On the labelled boxes the formula scores
    10.1% on untruncated cars. A detector whose boxes look *more* like the labels makes
    it *worse*: 10.6% after fine-tuning against 8.7% with the COCO

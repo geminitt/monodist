@@ -5,7 +5,8 @@
     python -m monodist.report --summary   # every table, printed (results/summary.md)
 
 The template holds prose with {placeholders}: {name} is a number from `values()`, {table:name} a Markdown
-table from `tables()`. A placeholder without a value fails loudly.
+table from `tables()`. A placeholder without a value fails loudly. Braces right after a letter, "\\", "}", "_" or
+"^" belong to LaTeX and are not placeholders.
 """
 import argparse
 import json
@@ -192,7 +193,9 @@ def render(template):
         if key.startswith("table:"):
             return t[key[6:]]
         return v[key]
-    return re.sub(r"\{([a-z0-9_.:\-A-Z]+)\}", sub, template)
+    # a placeholder never follows a letter, a digit, "\\", "}", "_" or "^": LaTeX groups such as \mathrm{cam} or
+    # \frac{l}{2z} are left alone
+    return re.sub(r"(?<![\w\\}^_])\{([a-z0-9_.:\-A-Z]+)\}", sub, template)
 
 
 def main():
