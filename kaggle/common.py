@@ -33,6 +33,22 @@ def setup(commit):
     return root
 
 
+def fetch(url, dest, tries=5):
+    """Download url to dest, retrying with exponential backoff (1, 2, 4, 8 s); raise after the last try."""
+    import urllib.request
+    for k in range(tries):
+        try:
+            tmp = Path(str(dest) + ".part")
+            urllib.request.urlretrieve(url, tmp)
+            tmp.rename(dest)
+            return Path(dest)
+        except Exception as e:  # noqa: BLE001
+            if k == tries - 1:
+                raise
+            print(f"download failed ({e}); retrying in {2 ** k} s", flush=True)
+            time.sleep(2 ** k)
+
+
 def log(name, **values):
     """Append one JSON line to /kaggle/working/<name>.jsonl (kept as kernel output)."""
     values["time"] = time.strftime("%Y-%m-%d %H:%M:%S")

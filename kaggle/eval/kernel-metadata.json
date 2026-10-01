@@ -11,6 +11,6 @@
   "machine_shape": "NvidiaTeslaT4",
   "dataset_sources": ["leducnhuan/kitti-tracking"],
   "competition_sources": [],
-  "kernel_sources": ["spritker/monodist-finetune"],
+  "kernel_sources": [],
   "model_sources": []
 }

@@ -1,10 +1,11 @@
 # monodist: detections for every configuration on all 21 sequences, then per-frame latency (GPU T4).
-# Needs the output of the monodist-finetune kernel (best.pt). MODE = "smoke" runs a few frames of everything,
+# Uses the fixed-split weights of the GitHub release fixed-split-weights. MODE = "smoke" runs a few frames of everything,
 # MODE = "latency" only the timings (all configurations in one session, so they share the same machine).
 MODE = "smoke"
 COMMIT = "main"
 ONLY = None  # e.g. ["ft_1280_trt16"]: run only these configurations (and their pipelined variants)
 DETECT_ONLY = None  # e.g. ["ft_1280_nms_trt16"]: detections only for these; latency still for every configuration
+WEIGHTS = "https://github.com/geminitt/monodist/releases/download/fixed-split-weights/best.pt"
 
 # <common.py>
 
@@ -18,9 +19,8 @@ from ultralytics import YOLO  # noqa: E402
 from monodist import kitti  # noqa: E402
 
 smoke = MODE == "smoke"
-import shutil  # noqa: E402
-ft = "/tmp/ft.pt"  # exports are written next to the weights, and /kaggle/input is read-only
-shutil.copy(next(Path("/kaggle/input").glob("**/finetune/weights/best.pt")), ft)
+ft = "/tmp/ft.pt"  # exports are written next to the weights, so they live in a writable directory
+fetch(WEIGHTS, ft)
 coco = "yolo26n.pt"
 YOLO(coco)  # download once
 print("fine-tuned weights:", ft, flush=True)
