@@ -172,23 +172,18 @@ def compare(a, b, n_boot=2000):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True)
-    ap.add_argument("--det", nargs="+", required=True, help="detection directories; the first is the baseline")
+    ap.add_argument("--det", nargs="+", required=True, help="detection directories")
     ap.add_argument("--out", default="results/eval")
     ap.add_argument("--boot", type=int, default=2000)
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    rows = {}
     for d in args.det:
-        res, rows[d] = run(args.root, d, n_boot=args.boot)
+        res, _ = run(args.root, d, n_boot=args.boot)
         name = Path(d).name
         (out / f"{name}.json").write_text(json.dumps(res, indent=1))
         print(name, "mAP50-95 %.3f" % res["detection"]["mAP50-95"],
               {m: round(res["distance"][m]["all"]["absrel_mean"][0], 4) for m in METHODS})
-    base = args.det[0]
-    for d in args.det[1:]:
-        c = compare(rows[base], rows[d], args.boot)
-        (out / f"compare_{Path(base).name}_vs_{Path(d).name}.json").write_text(json.dumps(c, indent=1))
 
 
 if __name__ == "__main__":
