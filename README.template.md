@@ -210,14 +210,20 @@ pixi install && pixi run test               # CPU tests, KITTI labels included i
 
 # Kaggle (GPU T4, dataset leducnhuan/kitti-tracking), code pinned to the pushed HEAD:
 python kaggle/queue.py --commit $(git rev-parse HEAD)   # 13 fine-tuning jobs, two at a time; measured: 9.6 GPU-hours in total, ~45 min each
-python kaggle/push.py eval --mode latency               # latency, CUDA graphs, kernel profile
+for j in runs/kaggle/cv/f?-?; do                        # queue.py downloads each job's output there
+  cp -r $j/det/* results/cv/det/ && cp $j/runs/*/results.csv results/cv/train/$(basename $j).csv
+done
 
-# the fixed-split experiments behind results/eval and the accuracy column of the latency table:
-python kaggle/push.py finetune --mode full && python kaggle/push.py eval --mode full
+# the fixed-split experiments: fine-tuning (its weights are the release fixed-split-weights), then detection of
+# every configuration and the latency session, which download those released weights
+python kaggle/push.py finetune --mode full
+python kaggle/push.py eval --mode full                  # or --mode latency for the timings only
+kaggle kernels output spritker/monodist-eval -p runs/kaggle/eval
+cp -r runs/kaggle/eval/det/* results/det/ && cp runs/kaggle/eval/latency/*.json results/latency/
 
 # CPU only, from the detections:
 python -m monodist.crossval --root data/kitti_tracking --runs results/cv/det --out results/cv
-python -m monodist.evaluate --root data/kitti_tracking --det results/det/coco_1280 results/det/ft_1280 ...
+python -m monodist.evaluate --root data/kitti_tracking --det results/det/*    # -> results/eval
 python -m monodist.report --write
 ```
 
