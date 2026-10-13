@@ -1,23 +1,21 @@
 import numpy as np
 
-from monodist import match
+from monodist import kitti, match
 
 
-def frame(boxes, cls, neighbor=(), neighbor_cls=(), dontcare=()):
+def frame(boxes, cls, ignore=(), dontcare=()):
     n = len(boxes)
     return {"box": np.array(boxes, float).reshape(-1, 4), "cls": np.array(cls, int), "track": np.arange(n),
-            "z": np.full(n, 10.0), "trunc": np.zeros(n, int), "occ": np.zeros(n, int),
-            "neighbor_box": np.array(neighbor, float).reshape(-1, 4), "neighbor_cls": np.array(neighbor_cls, int),
-            "dontcare": np.array(dontcare, float).reshape(-1, 4)}
+            "z": np.full(n, 10.0), "range": np.full(n, 11.0), "trunc": np.zeros(n, int), "occ": np.zeros(n, int),
+            "ignore_box": np.array(ignore, float).reshape(-1, 4), "dontcare": np.array(dontcare, float).reshape(-1, 4)}
 
 
 def test_match_frame_statuses():
-    g = frame([[0, 0, 10, 10], [20, 0, 30, 10]], [0, 1], neighbor=[[40, 0, 50, 10]], neighbor_cls=[0],
-              dontcare=[[60, 0, 80, 20]])
-    det_box = np.array([[0, 0, 10, 10],      # hits car 0
-                        [0, 0, 10, 10],      # duplicate of the same car -> FP
-                        [20, 0, 30, 10],     # right place, wrong class (car on a pedestrian) -> FP
-                        [40, 0, 50, 10],     # car on a Van -> ignored
+    g = frame([[0, 0, 10, 10], [20, 0, 30, 10]], [0, 1], ignore=[[40, 0, 50, 10]], dontcare=[[60, 0, 80, 20]])
+    det_box = np.array([[0, 0, 10, 10],      # hits vehicle 0
+                        [0, 0, 10, 10],      # duplicate of the same vehicle -> FP
+                        [20, 0, 30, 10],     # right place, wrong class (vehicle on a person) -> FP
+                        [40, 0, 50, 10],     # on a Misc object -> ignored, whatever its class
                         [62, 2, 70, 10],     # inside DontCare -> ignored
                         [100, 0, 110, 10]])  # nothing there -> FP
     det_score = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4])
@@ -73,6 +71,19 @@ def test_evaluate_and_pairs():
     assert len(pairs["z"]) == 1 and pairs["z"][0] == 10.0 and pairs["seq"][0] == "0000"
     rep = match.detection_report(det, gt, status)
     assert rep["Car"]["AP50"] == 1.0 and rep["Car"]["n_gt"] == 1
+    assert rep["classes"] == ["Car"] and rep["mAP50"] == 1.0  # classes without labels stay out of the mean
+
+
+def test_agnostic_matching_ignores_the_group():
+    gt = {("0000", 0): frame([[0, 0, 10, 10], [20, 0, 30, 10]], [1, 3])}
+    det = {"seq": np.array(["0000", "0000"]), "frame": np.array([0, 0]), "box": np.array([[0, 0, 10, 10.], [20, 0, 30, 10]]),
+           "score": np.array([0.9, 0.8]), "cls": np.array([0, 4])}  # a van found as a car, a pedestrian as a cyclist
+    assert match.evaluate(det, gt)[0][:, 0].tolist() == [match.FP, match.FP]
+    gdet, ggt = match.regroup(det, gt, kitti.GROUP_OF)
+    assert match.evaluate(gdet, ggt)[0][:, 0].tolist() == [match.TP, match.FP]  # same group only for the van
+    adet, agt = match.agnostic(det, gt)
+    assert match.evaluate(adet, agt)[0][:, 0].tolist() == [match.TP, match.TP]
+    assert det["cls"].tolist() == [0, 4] and gt[("0000", 0)]["cls"].tolist() == [1, 3]  # the inputs are not modified
 
 
 def test_f1_threshold():
@@ -96,6 +107,6 @@ def test_matched_pairs_without_matches_has_every_field():
     gt = {("0000", 0): frame([[50, 50, 60, 60]], [0])}
     status, idx = match.evaluate(det, gt)
     pairs = match.matched_pairs(det, gt, status, idx, conf=0.25)
-    for k in ("z", "track", "trunc", "occ", "gt_box", "seq", "frame", "box", "cls", "score"):
+    for k in ("z", "range", "track", "trunc", "occ", "gt_box", "seq", "frame", "box", "cls", "score"):
         assert len(pairs[k]) == 0, k
     assert pairs["gt_box"].shape == (0, 4)

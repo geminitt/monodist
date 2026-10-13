@@ -11,28 +11,41 @@ TP, FP, IGNORED = 1, 0, -1
 
 
 def ground_truth(root, seqs):
-    """Per (seq, frame): labeled objects of the two classes, neighbor boxes and DontCare boxes."""
+    """Per (seq, frame): labeled objects of the class groups, ignore boxes (Misc) and DontCare boxes."""
     gt = {}
     for seq in seqs:
         lab = kitti.load_labels(root, seq)
-        P2 = kitti.load_calib(root, seq)
-        z = kitti.to_camera2(lab["loc"], P2)[:, 2]
+        loc = kitti.to_camera2(lab["loc"], kitti.load_calib(root, seq))
+        rng = kitti.center_range(lab["dim"], loc)
+        cls = kitti.classify(lab["type"])
         for fr in range(kitti.FRAMES[seq]):
             m = lab["frame"] == fr
-            t = lab["type"][m]
-            obj = np.isin(t, kitti.CLASSES)
+            obj = m & (cls >= 0)
             gt[(seq, fr)] = {
-                "box": lab["box"][m][obj],
-                "cls": np.array([kitti.CLASSES.index(c) for c in t[obj]], int),
-                "track": lab["track"][m][obj],
-                "z": z[m][obj],
-                "trunc": lab["trunc"][m][obj],
-                "occ": lab["occ"][m][obj],
-                "neighbor_box": lab["box"][m][np.isin(t, list(kitti.NEIGHBORS))],
-                "neighbor_cls": np.array([kitti.CLASSES.index(kitti.NEIGHBORS[c]) for c in t if c in kitti.NEIGHBORS], int),
-                "dontcare": lab["box"][m][t == "DontCare"],
+                "box": lab["box"][obj],
+                "cls": cls[obj],
+                "track": lab["track"][obj],
+                "z": loc[obj, 2],
+                "range": rng[obj],
+                "trunc": lab["trunc"][obj],
+                "occ": lab["occ"][obj],
+                "ignore_box": lab["box"][m & np.isin(lab["type"], kitti.IGNORE)],
+                "dontcare": lab["box"][m & (lab["type"] == "DontCare")],
             }
     return gt
+
+
+def regroup(det, gt, mapping):
+    """Copies with every class index c replaced by mapping[c] (e.g. kitti.GROUP_OF): matching then scores groups."""
+    mapping = np.asarray(mapping, int)
+    det = {**det, "cls": mapping[np.asarray(det["cls"], int)]}
+    gt = {k: {**g, "cls": mapping[g["cls"]]} for k, g in gt.items()}
+    return det, gt
+
+
+def agnostic(det, gt):
+    """Copies with every class set to 0: matching then asks only whether an object was found, not its class."""
+    return regroup(det, gt, np.zeros(len(kitti.CLASSES), int))
 
 
 def _covered(det_box, regions):
@@ -58,7 +71,7 @@ def match_frame(det_box, det_score, det_cls, g, thresholds=IOU_THRESHOLDS):
         return status, gt_idx
     order = np.argsort(-det_score, kind="stable")
     ious = iou(det_box, g["box"])
-    nious = iou(det_box, g["neighbor_box"])
+    ign = iou(det_box, g["ignore_box"]).max(1) if len(g["ignore_box"]) else np.zeros(D)
     dontcare = _covered(det_box, g["dontcare"]) >= 0.5
     for ti, thr in enumerate(thresholds):
         taken = np.zeros(len(g["box"]), bool)
@@ -70,8 +83,7 @@ def match_frame(det_box, det_score, det_cls, g, thresholds=IOU_THRESHOLDS):
                     status[d, ti], gt_idx[d, ti] = TP, j
                     taken[j] = True
                     continue
-            same = g["neighbor_cls"] == det_cls[d]
-            if (same.any() and nious[d, same].max() >= thr) or dontcare[d]:
+            if ign[d] >= thr or dontcare[d]:
                 status[d, ti] = IGNORED
     return status, gt_idx
 
@@ -111,16 +123,22 @@ def average_precision(score, status, n_gt):
     return ap / 101
 
 
-def detection_report(det, gt, status, thresholds=IOU_THRESHOLDS):
-    """AP per class at each IoU threshold, AP50, and mAP50-95 averaged over classes and thresholds."""
+def detection_report(det, gt, status, thresholds=IOU_THRESHOLDS, names=kitti.CLASSES):
+    """AP per class at each IoU threshold, AP50, and mAP50-95 averaged over the classes that have labels.
+
+    A class without labeled objects in the evaluated sequences has AP NaN and is left out of the means;
+    "classes" lists the ones averaged.
+    """
     out = {}
-    for c, name in enumerate(kitti.CLASSES):
+    for c, name in enumerate(names):
         n_gt = int(sum((g["cls"] == c).sum() for g in gt.values()))
         m = det["cls"] == c
         aps = [average_precision(det["score"][m], status[m, t], n_gt) for t in range(len(thresholds))]
         out[name] = {"n_gt": n_gt, "AP50": aps[0], "AP50-95": float(np.mean(aps))}
-    out["mAP50"] = float(np.mean([out[n]["AP50"] for n in kitti.CLASSES]))
-    out["mAP50-95"] = float(np.mean([out[n]["AP50-95"] for n in kitti.CLASSES]))
+    present = [n for n in names if out[n]["n_gt"] > 0]
+    out["classes"] = present
+    out["mAP50"] = float(np.mean([out[n]["AP50"] for n in present])) if present else float("nan")
+    out["mAP50-95"] = float(np.mean([out[n]["AP50-95"] for n in present])) if present else float("nan")
     return out
 
 
@@ -140,7 +158,7 @@ def f1_threshold(score, status, n_gt):
 
 def per_detection_conf(det, thresholds):
     """Broadcast one threshold per class to one threshold per detection."""
-    return np.asarray(thresholds)[det["cls"]]
+    return np.asarray(thresholds)[np.asarray(det["cls"], int)]
 
 
 def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
@@ -150,25 +168,25 @@ def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
     for i in rows:
         g = gt[(det["seq"][i], det["frame"][i])]
         j = gt_idx[i, iou_col]
-        for k in ("z", "track", "trunc", "occ"):
+        for k in ("z", "range", "track", "trunc", "occ"):
             cols[k].append(g[k][j])
         cols["gt_box"].append(g["box"][j])
     out = {k: np.asarray(v) for k, v in cols.items()}
     for k in ("seq", "frame", "box", "cls", "score"):
         out[k] = det[k][rows]
     if len(rows) == 0:
-        out.update(z=np.zeros(0), track=np.zeros(0, int), trunc=np.zeros(0, int), occ=np.zeros(0, int),
+        out.update(z=np.zeros(0), range=np.zeros(0), track=np.zeros(0, int), trunc=np.zeros(0, int), occ=np.zeros(0, int),
                    gt_box=np.zeros((0, 4)))
     return out
 
 
-def recall_by_distance(det, gt, status, gt_idx, conf, bins, iou_col=0):
-    """Share of labeled objects found (score >= conf, IoU >= 0.5), per class and distance bin."""
+def recall_by_distance(det, gt, status, gt_idx, conf, bins, iou_col=0, names=kitti.CLASSES):
+    """Share of labeled objects found (score >= conf, IoU >= 0.5), per class and distance bin (depth Z)."""
     hit = set()
     for i in np.where((status[:, iou_col] == TP) & (det["score"] >= conf))[0]:
         hit.add((det["seq"][i], det["frame"][i], gt_idx[i, iou_col]))
     out = {}
-    for c, name in enumerate(kitti.CLASSES):
+    for c, name in enumerate(names):
         found, total = np.zeros(len(bins) - 1), np.zeros(len(bins) - 1)
         for key, g in gt.items():
             for j in np.where(g["cls"] == c)[0]:

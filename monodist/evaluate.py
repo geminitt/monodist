@@ -21,16 +21,21 @@ METHODS = ("size", "ground", "mlp")
 
 
 def constants(root, train=None):
-    """Known-size heights per class and the camera height above the road, from the train labels only."""
-    heights = {c: [] for c in kitti.CLASSES}
+    """Known-size heights per class group and the camera height above the road, from the train labels only.
+
+    The camera height is the median bottom of the Car boxes (cars stand on the road; vans and trucks too, but
+    the Car rows alone are plenty and their bottoms are the most reliable).
+    """
+    heights = {c: [] for c in range(len(kitti.CLASSES))}
     road = []
     for seq in train or kitti.SPLIT["train"]:
         lab = kitti.load_labels(root, seq)
         y = kitti.to_camera2(lab["loc"], kitti.load_calib(root, seq))[:, 1]
-        for c in kitti.CLASSES:
-            heights[c].extend(lab["dim"][lab["type"] == c, 0])
+        cls = kitti.classify(lab["type"])
+        for c in heights:
+            heights[c].extend(lab["dim"][cls == c, 0])
         road.extend(y[lab["type"] == "Car"])
-    return {"class_height": [float(np.mean(heights[c])) for c in kitti.CLASSES], "cam_height": float(np.median(road))}
+    return {"class_height": [float(np.mean(heights[c])) for c in heights], "cam_height": float(np.median(road))}
 
 
 def camera(root, seqs, sizes):
@@ -53,6 +58,25 @@ def geometric(pairs, box, cam, const):
     return za, zb, fallback
 
 
+def to_range(rows, z, cam):
+    s = rows["seq"]
+    return geometry.depth_to_range(rows["box"], z, per_row(cam, s, 0), per_row(cam, s, 1), per_row(cam, s, 2))
+
+
+def precision_by_distance(det, status, z_pred, bins):
+    """Share of kept detections that hit an object (IoU >= 0.5, any class), per bin of the predicted depth.
+
+    This is what the decision layer sees: every kept detection is an obstacle at its predicted distance.
+    """
+    keep = status[:, 0] != match.IGNORED
+    b = np.searchsorted(bins, z_pred, side="right") - 1
+    hits, total = np.zeros(len(bins) - 1), np.zeros(len(bins) - 1)
+    for k in range(len(bins) - 1):
+        m = keep & (b == k)
+        total[k], hits[k] = m.sum(), (status[m, 0] == match.TP).sum()
+    return {"hits": hits.tolist(), "total": total.tolist()}
+
+
 def feats(pairs, cam):
     s = pairs["seq"]
     return geometry.features(pairs["box"], pairs["cls"], per_row(cam, s, 0), per_row(cam, s, 1), per_row(cam, s, 2),
@@ -64,13 +88,18 @@ def subset(d, seqs):
     return {k: v[m] for k, v in d.items()}
 
 
-def predict(root, det_dir, split=None, seed=0, mlp_epochs=150):
-    """One split: detection metrics on test, and every matched test object with the three distance predictions."""
+def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None):
+    """One split: detection metrics on test, and every matched test object with the three distance predictions.
+
+    save_model: a path where the distance ensemble is saved with its thresholds, constants and provenance
+    (monodist.pipeline loads it).
+    """
     split = split or kitti.SPLIT
     det, sizes = merge(det_dir)
-    seqs = kitti.SEQUENCES
+    # Only the split's own sequences are read: a cross-validation fold never touches the held-out kitti.TEST.
+    seqs = sorted(set(split["train"]) | set(split["val"]) | set(split["test"]))
     missing = sorted(set(seqs) - set(sizes))
-    assert not missing, f"{det_dir}: no detections for sequences {missing} (all 21 are needed)"
+    assert not missing, f"{det_dir}: no detections for sequences {missing}"
     det = subset(det, seqs)
     cam = camera(root, seqs, sizes)
     const = constants(root, split["train"])
@@ -90,6 +119,19 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150):
             "recall_by_distance": match.recall_by_distance(tdet, test_gt, status[tm], gt_idx[tm],
                                                            match.per_detection_conf(tdet, conf), metrics.BINS)}
     info["val_detection"] = match.detection_report({k: v[vm] for k, v in det.items()}, val_gt, status[vm])
+    # Reporting groups (Vehicle = Car + Van + LargeVehicle): a van found as a car counts as found.
+    gdet, ggt = match.regroup(tdet, test_gt, kitti.GROUP_OF)
+    gstatus, ggt_idx = match.evaluate(gdet, ggt)
+    info["detection_groups"] = match.detection_report(gdet, ggt, gstatus, names=kitti.GROUPS)
+    info["recall_by_distance_groups"] = match.recall_by_distance(
+        gdet, ggt, gstatus, ggt_idx, match.per_detection_conf(tdet, conf), metrics.BINS, names=kitti.GROUPS)
+    # Class-agnostic view (the decision layer's): was the object found at all, whatever class was predicted?
+    # Each detection keeps the threshold of the class it was predicted as.
+    adet, agt = match.agnostic(tdet, test_gt)
+    astatus, agt_idx = match.evaluate(adet, agt)
+    info["detection_agnostic"] = match.detection_report(adet, agt, astatus, names=("object",))
+    info["recall_by_distance_agnostic"] = match.recall_by_distance(
+        adet, agt, astatus, agt_idx, match.per_detection_conf(tdet, conf), metrics.BINS, names=("object",))["object"]
 
     pairs = match.matched_pairs(det, gt, status, gt_idx, match.per_detection_conf(det, conf))
     near = pairs["z"] < MIN_Z
@@ -102,12 +144,26 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150):
                               for part, p in ((part, subset(pairs, split[part])) for part in ("train", "val", "test"))}
     model, epochs, curve = mlp.train(feats(train, cam), train["z"], train["seq"], max_epochs=mlp_epochs, seed=seed)
     info["mlp"] = {"epochs": epochs, "heldout_l1_log": [float(v) for v in curve], "n_train": int(len(train["z"]))}
+    if save_model:
+        run = Path(det_dir) / "run.json"
+        mlp.save(save_model, model, {
+            "features": list(geometry.FEATURES), "classes": list(kitti.CLASSES), "conf": info["conf"],
+            "constants": const, "min_z": MIN_Z, "epochs": epochs, "split": split, "det_dir": str(det_dir),
+            "detector": json.loads(run.read_text()) if run.exists() else None})
+
+    kept = tdet["score"] >= match.per_detection_conf(tdet, conf)
+    kdet = {k: v[kept] for k, v in tdet.items()}
+    info["precision_by_predicted_distance"] = precision_by_distance(
+        kdet, astatus[kept], mlp.predict(model, feats(kdet, cam)), metrics.BINS)
 
     za, zb, fallback = geometric(test, test["box"], cam, const)
     ga, gb, _ = geometric(test, test["gt_box"], cam, const)
-    rows = {k: test[k] for k in ("seq", "frame", "track", "cls", "trunc", "z")}
-    rows.update({"pred_size": za, "pred_ground": zb, "pred_mlp": mlp.predict(model, feats(test, cam)),
-                 "label_size": ga, "label_ground": gb, "fallback": fallback})
+    zm = mlp.predict(model, feats(test, cam))
+    rows = {k: test[k] for k in ("seq", "frame", "track", "cls", "trunc", "z", "range")}
+    rows.update({"pred_size": za, "pred_ground": zb, "pred_mlp": zm,
+                 "label_size": ga, "label_ground": gb, "fallback": fallback,
+                 "range_size": to_range(test, za, cam), "range_ground": to_range(test, zb, cam),
+                 "range_mlp": to_range(test, zm, cam)})
     rows["keys"] = np.array([f"{s}/{f}/{t}" for s, f, t in zip(test["seq"], test["frame"], test["track"])])
     return info, rows
 
@@ -117,10 +173,12 @@ def breakdown(preds, rows, n_boot):
     z, clusters = rows["z"], np.array([f"{s}/{t}" for s, t in zip(rows["seq"], rows["track"])])
     b = metrics.distance_bin(z)
     out = {}
+    # every class, then the groups that gather several classes (Vehicle)
+    parts = [(cname, rows["cls"] == c) for c, cname in enumerate(kitti.CLASSES)]
+    parts += [(g, kitti.GROUP_OF[rows["cls"]] == k) for k, g in enumerate(kitti.GROUPS) if (kitti.GROUP_OF == k).sum() > 1]
     for name, p in preds.items():
         out[name] = {"all": metrics.summarize(p, z, clusters, n_boot)}
-        for c, cname in enumerate(kitti.CLASSES):
-            m = rows["cls"] == c
+        for cname, m in parts:
             out[name][cname] = metrics.summarize(p[m], z[m], clusters[m], n_boot)
             whole = m & (rows["trunc"] == 0)  # not cut by the image border (KITTI truncation level 0)
             out[name][f"{cname} not truncated"] = metrics.summarize(p[whole], z[whole], clusters[whole], n_boot)
@@ -133,8 +191,7 @@ def breakdown(preds, rows, n_boot):
         for j in range(i + 1, len(names)):
             ea, eb = metrics.abs_rel(preds[names[i]], z), metrics.abs_rel(preds[names[j]], z)
             d = {"all": metrics.paired_difference(ea, eb, clusters, n_boot)}
-            for c, cname in enumerate(kitti.CLASSES):
-                m = rows["cls"] == c
+            for cname, m in parts:
                 d[cname] = metrics.paired_difference(ea[m], eb[m], clusters[m], n_boot)
             diffs[f"{names[i]} - {names[j]}"] = d
     out["paired_absrel_difference"] = diffs
@@ -143,14 +200,16 @@ def breakdown(preds, rows, n_boot):
 
 def summarize(rows, n_boot=2000):
     """The distance tables from per-object rows (one split, or all folds pooled)."""
+    by_range = {**rows, "z": rows["range"]}  # same objects, scored against the Euclidean distance (binned by it)
     return {"distance": breakdown({m: rows[f"pred_{m}"] for m in METHODS}, rows, n_boot),
+            "range": breakdown({m: rows[f"range_{m}"] for m in METHODS}, by_range, n_boot),
             # error floor of the geometric methods: the same formulas on the labeled boxes of the same objects
             "distance_on_label_boxes": breakdown({m: rows[f"label_{m}"] for m in ("size", "ground")}, rows, n_boot),
             "ground_fallback_share": float(np.mean(rows["fallback"]))}
 
 
-def run(root, det_dir, split=None, n_boot=2000, seed=0, mlp_epochs=150):
-    info, rows = predict(root, det_dir, split, seed, mlp_epochs)
+def run(root, det_dir, split=None, n_boot=2000, seed=0, mlp_epochs=150, save_model=None):
+    info, rows = predict(root, det_dir, split, seed, mlp_epochs, save_model)
     return {**info, **summarize(rows, n_boot)}, rows
 
 
@@ -175,12 +234,13 @@ def main():
     ap.add_argument("--det", nargs="+", required=True, help="detection directories")
     ap.add_argument("--out", default="results/eval")
     ap.add_argument("--boot", type=int, default=2000)
+    ap.add_argument("--save-model", action="store_true", help="also write <out>/<name>.distance.pt")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     for d in args.det:
-        res, _ = run(args.root, d, n_boot=args.boot)
         name = Path(d).name
+        res, _ = run(args.root, d, n_boot=args.boot, save_model=out / f"{name}.distance.pt" if args.save_model else None)
         (out / f"{name}.json").write_text(json.dumps(res, indent=1))
         print(name, "mAP50-95 %.3f" % res["detection"]["mAP50-95"],
               {m: round(res["distance"][m]["all"]["absrel_mean"][0], 4) for m in METHODS})

@@ -20,30 +20,39 @@ def parse_imgsz(s):
     v = [int(x) for x in str(s).split(",")]
     return v[0] if len(v) == 1 else v
 
-COCO_TO_KITTI = {2: 0, 0: 1}  # COCO car -> Car, COCO person -> Pedestrian
+# COCO weights: car -> Car; bus, train and truck -> LargeVehicle; person -> Pedestrian. COCO has no van and no
+# cyclist class (a rider is a person), so the COCO baseline never predicts Van or Cyclist.
+COCO_TO_KITTI = {2: 0, 5: 2, 6: 2, 7: 2, 0: 3}
+
+
+def predict_images(model, images, imgsz, conf, coco=False, nms=False, half=False):
+    """Detections of a batch of images (paths or arrays): one dict per image with box, score, cls and image_hw."""
+    # nms=False selects YOLO26's one-to-one (NMS-free) head, nms=None its one-to-many head followed by NMS;
+    # quantize=16 runs the model in fp16
+    results = model.predict(images, imgsz=imgsz, quantize=16 if half else None, conf=conf,
+                            classes=list(COCO_TO_KITTI) if coco else None, max_det=300,
+                            nms=None if nms else False, verbose=False)
+    out = []
+    for r in results:
+        b = r.boxes
+        cls = b.cls.cpu().numpy().astype(int)
+        if coco:
+            cls = np.array([COCO_TO_KITTI[c] for c in cls], int)
+        out.append({"box": b.xyxy.cpu().numpy().reshape(-1, 4), "score": b.conf.cpu().numpy(), "cls": cls,
+                    "image_hw": np.array(r.orig_shape)})
+    return out
 
 
 def detect_sequence(model, root, seq, imgsz, half, conf, coco, batch, frames=None, nms=False):
     paths = [str(kitti.image_path(root, seq, f)) for f in range(frames or kitti.FRAMES[seq])]
-    classes = list(COCO_TO_KITTI) if coco else [0, 1]  # a model fine-tuned with Van / Cyclist: keep Car, Pedestrian
     rows = {"frame": [], "box": [], "score": [], "cls": []}
     shape = None
     for i in range(0, len(paths), batch):
-        # nms=False selects YOLO26's one-to-one (NMS-free) head, nms=None its one-to-many head followed by NMS;
-        # quantize=16 runs the model in fp16
-        results = model.predict(paths[i:i + batch], imgsz=imgsz, quantize=16 if half else None, conf=conf,
-                                classes=classes, max_det=300, nms=None if nms else False, verbose=False)
-        for k, r in enumerate(results):
-            shape = r.orig_shape
-            b = r.boxes
-            cls = b.cls.cpu().numpy().astype(int)
-            if coco:
-                cls = np.array([COCO_TO_KITTI[c] for c in cls], int)
-            n = len(cls)
-            rows["frame"].append(np.full(n, i + k))
-            rows["box"].append(b.xyxy.cpu().numpy().reshape(-1, 4))
-            rows["score"].append(b.conf.cpu().numpy())
-            rows["cls"].append(cls)
+        for k, r in enumerate(predict_images(model, paths[i:i + batch], imgsz, conf, coco, nms, half)):
+            shape = r["image_hw"]
+            rows["frame"].append(np.full(len(r["cls"]), i + k))
+            for key in ("box", "score", "cls"):
+                rows[key].append(r[key])
     out = {k: np.concatenate(v) for k, v in rows.items()}
     out["image_hw"] = np.array(shape)
     return out

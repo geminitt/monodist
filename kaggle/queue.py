@@ -95,7 +95,7 @@ def main():
     ap.add_argument("--prefix", default="", help="kernel name prefix, e.g. smoke- to keep smoke runs apart")
     ap.add_argument("--parallel", type=int, default=2)
     args = ap.parse_args()
-    seqs = kitti.SEQUENCES[:2] if args.mode == "smoke" else kitti.SEQUENCES  # as in kaggle/cv/run.py
+    seqs = kitti.DEVELOPMENT[:2] if args.mode == "smoke" else kitti.DEVELOPMENT  # as in kaggle/cv/run.py
     failed = set()
     while True:
         todo = [j for j in args.jobs if not done(args.prefix + j, j, seqs, args.commit) and j not in failed]

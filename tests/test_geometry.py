@@ -45,10 +45,19 @@ def test_features_are_camera_independent():
     assert np.allclose(x1, x2)
 
 
-def test_cut_flag():
-    x = geometry.features(np.array([[0.5, 100, 50, 200], [100, 100, 200, 200]]), np.array([0, 1]), F, CX, CY, W, H)
-    assert x[:, geometry.FEATURES.index("cut")].tolist() == [1.0, 0.0]
-    assert x[:, geometry.FEATURES.index("pedestrian")].tolist() == [0.0, 1.0]
+def test_cut_flag_and_one_hot_classes():
+    box = np.array([[0.5, 100, 50, 200]] + [[100, 100, 200, 200]] * 4)
+    x = geometry.features(box, np.arange(5), F, CX, CY, W, H)
+    assert x.shape[1] == len(geometry.FEATURES)
+    assert x[:, geometry.FEATURES.index("cut")].tolist() == [1.0, 0.0, 0.0, 0.0, 0.0]
+    onehot = x[:, [geometry.FEATURES.index(c) for c in ("car", "van", "largevehicle", "pedestrian", "cyclist")]]
+    assert onehot.tolist() == np.eye(5).tolist()
+
+
+def test_range_from_depth():
+    # box centered on the principal point: range equals depth; 3 m left at 4 m depth: range 5 m
+    box = np.array([[CX - 10, CY - 10, CX + 10, CY + 10], [CX - 3 / 4 * F - 10, CY - 10, CX - 3 / 4 * F + 10, CY + 10]])
+    assert np.allclose(geometry.depth_to_range(box, np.array([7.0, 4.0]), F, CX, CY), [7.0, 5.0])
 
 
 def test_iou():

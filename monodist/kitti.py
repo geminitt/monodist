@@ -1,34 +1,51 @@
-"""KITTI tracking: labels, calibration, the fixed sequence split and the three cross-validation folds."""
+"""KITTI tracking: labels, calibration, classes, the held-out test sequences and the cross-validation folds."""
 from pathlib import Path
 
 import numpy as np
 
-# Fixed split by sequence (never by frame: neighboring frames are near duplicates).
-# Chosen so that Car and Pedestrian are each close to 60/20/20 in instances and in tracks.
+# Splits are by sequence, never by frame: neighboring frames are near duplicates.
+# TEST is held out: it is opened once, at the end, with the final model; no choice may read it.
+# It holds 17-25% of each reporting group's instances and tracks (19% of the Cyclist tracks: 7 of 37).
+TEST = ["0003", "0007", "0011", "0016", "0017"]
+# Three-fold cross-validation by sequence on the other 16: every one of them is test exactly once, and every
+# choice (configuration, epoch, threshold, filter setting) is made on these folds. Within a fold the non-test
+# sequences split about 70/30 into train and val. Person instances cannot be balanced: sequence 0019 alone
+# holds 72% of those outside TEST. Found by a deterministic search over the group counts.
+FOLDS = [
+    {"test": ["0001", "0004", "0006", "0010", "0014", "0015"],
+     "val": ["0009", "0013", "0018"],
+     "train": ["0000", "0002", "0005", "0008", "0012", "0019", "0020"]},
+    {"test": ["0005", "0019", "0020"],
+     "val": ["0000", "0002", "0004", "0010", "0012", "0014"],
+     "train": ["0001", "0006", "0008", "0009", "0013", "0015", "0018"]},
+    {"test": ["0000", "0002", "0008", "0009", "0012", "0013", "0018"],
+     "val": ["0001", "0010", "0014", "0015"],
+     "train": ["0004", "0005", "0006", "0019", "0020"]},
+]
+# The final model trains on the 16 non-test sequences (val chooses its epoch and thresholds) and is scored on TEST.
 SPLIT = {
-    "train": ["0001", "0005", "0008", "0009", "0013", "0018", "0019", "0020"],
-    "val": ["0003", "0004", "0006", "0011", "0016"],
-    "test": ["0000", "0002", "0007", "0010", "0012", "0014", "0015", "0017"],
+    "train": ["0000", "0001", "0004", "0006", "0008", "0010", "0012", "0015", "0018", "0019", "0020"],
+    "val": ["0002", "0005", "0009", "0013", "0014"],
+    "test": TEST,
 }
 SEQUENCES = sorted(s for seqs in SPLIT.values() for s in seqs)
-# Three-fold cross-validation by sequence: every sequence is test exactly once. Folds balance cars (instances and
-# tracks) and pedestrian tracks; pedestrian instances cannot be balanced, sequence 0019 alone holds 53% of them.
-# Within each fold the non-test sequences split about 70/30 into train and val the same way.
-FOLDS = [
-    {"test": ["0002", "0006", "0007", "0009", "0012", "0013", "0014", "0017", "0018"],
-     "val": ["0001", "0008", "0015", "0016"],
-     "train": ["0000", "0003", "0004", "0005", "0010", "0011", "0019", "0020"]},
-    {"test": ["0003", "0005", "0008", "0019", "0020"],
-     "val": ["0000", "0004", "0006", "0007", "0010", "0015", "0017"],
-     "train": ["0001", "0002", "0009", "0011", "0012", "0013", "0014", "0016", "0018"]},
-    {"test": ["0000", "0001", "0004", "0010", "0011", "0015", "0016"],
-     "val": ["0002", "0003", "0005", "0006", "0008", "0013", "0018"],
-     "train": ["0007", "0009", "0012", "0014", "0017", "0019", "0020"]},
-]
-CLASSES = ("Car", "Pedestrian")
-EXTRA_CLASSES = ("Van", "Cyclist")  # optionally labeled when fine-tuning; never evaluated
-# A detection on a neighboring class counts neither as a hit nor as a false alarm (as in the KITTI devkit).
-NEIGHBORS = {"Van": "Car", "Person": "Pedestrian"}
+DEVELOPMENT = sorted(set(SEQUENCES) - set(TEST))
+# Detected classes and the KITTI types each one gathers. Distance from a box depends on the object's real size,
+# so the classes keep sizes apart (one Vehicle class put trucks and cars together and cost 3 points of AbsRel on
+# label boxes); Truck and Tram share a class because Tram appears in 3 sequences only.
+CLASSES = ("Car", "Van", "LargeVehicle", "Pedestrian", "Cyclist")
+TYPES = {"Car": 0, "Van": 1, "Truck": 2, "Tram": 2, "Pedestrian": 3, "Person": 3, "Cyclist": 4}
+# Reporting groups: class index -> group index.
+GROUPS = ("Vehicle", "Person", "Cyclist")
+GROUP_OF = np.array([0, 0, 0, 1, 2])
+# Misc (an ambiguous label) is an ignore region: a detection on it counts neither as a hit nor as a false alarm,
+# and missing it is not a miss. DontCare regions are handled the same way, by area coverage (as in the devkit).
+IGNORE = ("Misc",)
+
+
+def classify(types):
+    """Class index of each KITTI type, -1 for types outside the classes."""
+    return np.array([TYPES.get(t, -1) for t in types], int)
 
 
 def training_dir(root):
@@ -75,6 +92,13 @@ def intrinsics(P2):
 def to_camera2(loc, P2):
     """Move label locations from the camera-0 frame into camera 2, whose image the boxes live in."""
     return loc + intrinsics(P2)["t"]
+
+
+def center_range(dim, loc_cam2):
+    """Euclidean distance from camera 2 to the center of each 3D box (loc is the bottom center; y points down)."""
+    c = np.asarray(loc_cam2, float).copy()
+    c[:, 1] -= np.asarray(dim)[:, 0] / 2
+    return np.linalg.norm(c, axis=1)
 
 
 def project(points, P2):

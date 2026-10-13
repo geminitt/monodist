@@ -1,9 +1,12 @@
 """Distance from one camera: the two geometric methods and the features of the learned one.
 
-All distances are depths Z along the optical axis of camera 2, in meters.
+Distances are depths Z along the optical axis of camera 2, in meters; depth_to_range turns one into the
+Euclidean distance.
 Boxes are (N, 4) arrays of x1, y1, x2, y2 in pixels; classes are indices into kitti.CLASSES.
 """
 import numpy as np
+
+from .kitti import CLASSES
 
 BORDER = 2.0  # a box edge this close to the image border (pixels) means the object is cut off
 
@@ -53,7 +56,9 @@ def ground_or_size(box, cls, f, cy, cam_height, image_h, class_height):
     return np.where(fallback, size_distance(box, cls, f, class_height), zg), fallback
 
 
-FEATURES = ("h/f", "w/f", "(v2-cy)/f", "(v1-cy)/f", "(u-cx)/f", "pedestrian", "cut")
+# One-hot class columns: a single class number would tell the MLP that Cyclist is "more" than Pedestrian.
+FEATURES = ("h/f", "w/f", "(v2-cy)/f", "(v1-cy)/f", "(u-cx)/f", *(c.lower() for c in CLASSES), "cut")
+N_CLASSES = len(CLASSES)
 
 
 def features(box, cls, f, cx, cy, image_w, image_h):
@@ -66,6 +71,12 @@ def features(box, cls, f, cx, cy, image_w, image_h):
         (y2 - cy) / f,
         (y1 - cy) / f,
         ((x1 + x2) / 2 - cx) / f,
-        np.asarray(cls, float),
+        *np.eye(N_CLASSES)[np.asarray(cls, int)].T,
         cut.astype(float),
     ], axis=1)
+
+
+def depth_to_range(box, z, f, cx, cy):
+    """Euclidean distance along the ray through the box center, from the depth Z of that point (fy = fx assumed)."""
+    u, v = (box[:, 0] + box[:, 2]) / 2, (box[:, 1] + box[:, 3]) / 2
+    return z * np.sqrt(1 + ((u - cx) / f) ** 2 + ((v - cy) / f) ** 2)

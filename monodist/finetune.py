@@ -1,16 +1,14 @@
-"""Fine-tune all weights of the COCO-pretrained YOLO26n on the train sequences of a split.
+"""Fine-tune all weights of the COCO-pretrained YOLO26n on the train sequences of a split (three class groups).
 
     python -m monodist.finetune --data kitti.yaml --project runs --name f0_a --config a
 
 Ultralytics saves last.pt every epoch; rerunning the same command resumes an interrupted run. Within a run
 the best epoch is chosen on the val sequences by Ultralytics' fitness (0.1 mAP50 + 0.9 mAP50-95).
 
-Configurations compared on val in the cross-validation (see kaggle/cv):
-  a  defaults: Car and Pedestrian labeled; optimizer "auto" picks AdamW, lr0 0.0017 (0.00125 with 4 classes)
+Configurations compared on val in the cross-validation (see kaggle/cv), the two best of the earlier
+two-class study:
+  a  defaults (optimizer "auto")
   b  a with a lower learning rate (AdamW, lr0 0.0005)
-  c  a with Van and Cyclist labeled as their own classes
-  d  c with the DontCare regions painted gray
-  e  a, but the epoch is chosen with the NMS-free (one-to-one) head instead of the NMS head
 """
 import argparse
 from pathlib import Path
@@ -18,9 +16,6 @@ from pathlib import Path
 CONFIGS = {
     "a": {},
     "b": {"train": {"optimizer": "AdamW", "lr0": 0.0005}},
-    "c": {"extra_classes": True},
-    "d": {"extra_classes": True, "mask_dontcare": True},
-    "e": {"train": {"nms": False}},
 }
 
 
