@@ -1,14 +1,15 @@
 [workspace]
 name = "monodist"
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+# linux-64-cuda: the same platform with a driver for CUDA 12, which CUDA PyTorch needs (a virtual package)
+platforms = ["linux-64", { name = "linux-64-cuda", platform = "linux-64", cuda = "12" }]
 
-# Local environment: CPU only. Analysis, the distance models and the tests run here;
-# detection, fine-tuning and latency run on a Kaggle T4 (see kaggle/).
+# Default environment: CPU only. Analysis, the distance models and the tests run here (and in CI).
+# Environment "gpu" (pixi run -e gpu ...): CUDA PyTorch for short local GPU checks before a remote job;
+# detection, fine-tuning and latency run on a remote T4 (see kaggle/).
 
 [dependencies]
 python = "3.12.*"
-pytorch = { version = ">=2.9", build = "cpu*" }
 torchvision = "*"
 numpy = "*"
 matplotlib = "*"
@@ -18,8 +19,24 @@ ipykernel = "*"
 nbformat = "*"
 nbclient = "*"
 
+[feature.cpu.dependencies]
+pytorch = { version = ">=2.9", build = "cpu*" }
+
+[feature.cpu]
+platforms = ["linux-64"]
+
+[feature.gpu]
+platforms = ["linux-64-cuda"]
+
+[feature.gpu.dependencies]
+pytorch = { version = ">=2.9", build = "cuda*" }
+
+[environments]
+default = ["cpu"]
+gpu = ["gpu"]
+
 [pypi-dependencies]
-ultralytics = ">=8.4"
+ultralytics = "==8.4.163"  # one version in every environment, local and remote
 monodist = { path = ".", editable = true }
 
 [tasks]
