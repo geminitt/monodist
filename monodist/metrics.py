@@ -61,7 +61,12 @@ def summarize(pred, true, clusters, n_boot=2000):
 
 
 def paired_difference(err_a, err_b, clusters, n_boot=2000):
-    """Mean of (err_a - err_b) on the same objects, with a cluster-bootstrap interval. Negative: a is better."""
+    """Mean of (err_a - err_b) on the same objects, with a cluster-bootstrap interval. Negative: a is better.
+
+    None when there is no object to compare (e.g. a class absent from the rows).
+    """
+    if len(err_a) == 0:
+        return None
     return [float(v) for v in cluster_bootstrap(err_a - err_b, clusters, np.mean, n_boot)]
 
 

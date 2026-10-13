@@ -163,8 +163,8 @@ def compare(a, b, n_boot=2000):
     for m in METHODS:
         k = f"pred_{m}"
         ea, eb = metrics.abs_rel(a[k][ia], z), metrics.abs_rel(b[k][ib], z)
-        out[m] = {"a": metrics.summarize(a[k][ia], z, clusters, n_boot)["absrel_mean"],
-                  "b": metrics.summarize(b[k][ib], z, clusters, n_boot)["absrel_mean"],
+        out[m] = {"a": metrics.summarize(a[k][ia], z, clusters, n_boot).get("absrel_mean"),
+                  "b": metrics.summarize(b[k][ib], z, clusters, n_boot).get("absrel_mean"),
                   "b - a": metrics.paired_difference(eb, ea, clusters, n_boot)}
     return out
 

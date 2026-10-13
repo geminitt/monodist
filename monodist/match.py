@@ -133,7 +133,9 @@ def f1_threshold(score, status, n_gt):
     order = np.argsort(-score, kind="stable")
     score, ctp = score[order], np.cumsum(tp[order])
     f1 = 2 * ctp / (np.arange(1, len(score) + 1) + n_gt)
-    return float(score[int(np.argmax(f1))])
+    # score >= t keeps every detection tied with t, so only the last of each run of equal scores is reachable
+    last = np.append(score[1:] != score[:-1], True)
+    return float(score[int(np.argmax(np.where(last, f1, -1)))])
 
 
 def per_detection_conf(det, thresholds):
@@ -155,7 +157,8 @@ def matched_pairs(det, gt, status, gt_idx, conf, iou_col=0):
     for k in ("seq", "frame", "box", "cls", "score"):
         out[k] = det[k][rows]
     if len(rows) == 0:
-        out["gt_box"] = np.zeros((0, 4))
+        out.update(z=np.zeros(0), track=np.zeros(0, int), trunc=np.zeros(0, int), occ=np.zeros(0, int),
+                   gt_box=np.zeros((0, 4)))
     return out
 
 

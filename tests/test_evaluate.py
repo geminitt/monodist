@@ -44,3 +44,14 @@ def test_compare_on_common_objects(root, tmp_path):
     c = evaluate.compare(ra, rb, n_boot=20)
     assert c["n_common"] > 0.8 * len(ra["z"])
     assert c["size"]["b - a"][0] > 0  # jittered boxes give worse known-size distances
+
+
+def test_summary_of_one_class_only():
+    """A report whose rows hold cars but no pedestrian: the pedestrian entries are empty, not an error."""
+    one = lambda v: np.array([v])  # noqa: E731
+    rows = {"seq": one("0000"), "track": one(0), "cls": one(0), "trunc": one(0), "z": one(10.), "fallback": one(False),
+            **{f"{p}_{m}": one(11.) for p in ("pred", "label") for m in evaluate.METHODS}}
+    s = evaluate.summarize(rows, n_boot=10)
+    assert s["distance"]["size"]["Pedestrian"] == {"n": 0, "tracks": 0}
+    assert s["distance"]["paired_absrel_difference"]["size - ground"]["Pedestrian"] is None
+    assert np.isclose(s["distance"]["size"]["Car"]["absrel_mean"][0], 0.1)

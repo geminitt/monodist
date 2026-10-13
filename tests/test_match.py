@@ -81,3 +81,21 @@ def test_f1_threshold():
     # F1 after each detection with 3 objects: 2/4, 4/5, 4/6, 6/7, 6/8 -> best keeps the first four
     assert match.f1_threshold(score, status, 3) == 0.6
     assert match.f1_threshold(np.array([0.9, 0.8]), np.array([-1, 1]), 1) == 0.8  # ignored ones do not count
+
+
+def test_f1_threshold_never_splits_a_score_tie():
+    # a threshold keeps all four 0.8 detections or none of them: keeping the first only (F1 4/5) is not possible
+    score = np.array([0.9, 0.8, 0.8, 0.8, 0.8])
+    status = np.array([1, 1, 0, 0, 0])
+    assert match.f1_threshold(score, status, 2) == 0.9
+
+
+def test_matched_pairs_without_matches_has_every_field():
+    det = {"seq": np.array(["0000"]), "frame": np.array([0]), "box": np.array([[0, 0, 10, 10.]]),
+           "score": np.array([0.9]), "cls": np.array([0])}
+    gt = {("0000", 0): frame([[50, 50, 60, 60]], [0])}
+    status, idx = match.evaluate(det, gt)
+    pairs = match.matched_pairs(det, gt, status, idx, conf=0.25)
+    for k in ("z", "track", "trunc", "occ", "gt_box", "seq", "frame", "box", "cls", "score"):
+        assert len(pairs[k]) == 0, k
+    assert pairs["gt_box"].shape == (0, 4)
