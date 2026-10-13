@@ -26,3 +26,13 @@ def test_ensemble_prediction_is_the_geometric_mean():
     assert len(models) == 3
     each = np.array([mlp.predict(m, x) for m in models])
     assert np.allclose(mlp.predict(models, x), np.exp(np.log(each).mean(0)), rtol=1e-5)
+
+
+def test_a_feature_constant_in_training_stays_finite():
+    """A one-hot column all zero in training (a class absent from the train rows) must not blow up at test time."""
+    rng = np.random.default_rng(3)
+    x = np.hstack([rng.normal(size=(200, 2)), np.zeros((200, 1))])
+    z = np.exp(x[:, 0] * 0.2 + 2)
+    models, _, _ = mlp.train(x, z, np.arange(200) % 2, max_epochs=3, n_models=1)
+    test = np.array([[0.0, 0.0, 1.0]])
+    assert np.isfinite(mlp.predict(models, test)).all() and mlp.predict(models, test)[0] < 1e3

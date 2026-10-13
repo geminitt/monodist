@@ -22,7 +22,10 @@ def _fit(x, logz, epochs, seed, lr=1e-3, batch=512, x_eval=None, logz_eval=None)
     rng = np.random.default_rng(seed)
     model = DistanceMLP(x.shape[1])
     model.mu.copy_(torch.tensor(x.mean(0), dtype=torch.float32))
-    model.sd.copy_(torch.tensor(np.maximum(x.std(0), 1e-6), dtype=torch.float32))
+    sd = x.std(0)
+    # a column constant in training (e.g. a class absent from the train rows) is centered but not scaled:
+    # dividing by a near-zero spread would turn an unseen value into a huge input
+    model.sd.copy_(torch.tensor(np.where(sd < 1e-6, 1.0, sd), dtype=torch.float32))
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     X, Y = torch.tensor(x, dtype=torch.float32), torch.tensor(logz, dtype=torch.float32)
     curve = []
