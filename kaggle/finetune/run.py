@@ -21,5 +21,5 @@ if MODE == "smoke":
 else:
     args += f" --epochs {EPOCHS}"
 t = time.time()
-sh(f"cd {SRC} && python -m monodist.finetune {args}")
+sh(f"cd {SRC} && python -m monodist.finetune {args}", timeout=remaining())
 log("finetune", step="train", mode=MODE, seconds=round(time.time() - t, 1))

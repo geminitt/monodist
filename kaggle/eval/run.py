@@ -61,7 +61,7 @@ for name, weights, imgsz, half, is_coco in configs if MODE != "latency" else []:
            + (" --frames 20" if smoke else "") + (" --batch 1" if str(weights).endswith(".engine") else "") + (" --nms" if "_nms" in name else ""))
     t = time.time()
     try:
-        sh(cmd)
+        sh(cmd, timeout=remaining())
         log("eval", step="detect", config=name, seconds=round(time.time() - t, 1))
     except Exception:
         log("eval", step="detect", config=name, error=traceback.format_exc()[-2000:])
@@ -75,12 +75,12 @@ for name, weights, imgsz, half, pipelined in runs:
            f"--imgsz {imgsz} {lat}" + (" --half" if half else "") + (" --pipelined" if pipelined else "") + (" --nms" if "_nms" in name else "")
            + (" --compile reduce-overhead" if name.endswith("_cg") else ""))
     try:
-        sh(cmd)
+        sh(cmd, timeout=remaining())
     except Exception:
         log("eval", step="latency", config=name, error=traceback.format_exc()[-2000:])
 for head, flag in (("e2e", ""), ("nms", " --nms")):  # kernels per forward pass, GPU busy time, CUDA graph replay
     try:
-        sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.profile_gpu --weights {ft} --out {WORK}/latency/profile_{head}.json{flag}")
+        sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.profile_gpu --weights {ft} --out {WORK}/latency/profile_{head}.json{flag}", timeout=remaining())
     except Exception:
         log("eval", step="profile", head=head, error=traceback.format_exc()[-2000:])
 log("eval", step="hardware", cpu_count=os.cpu_count(), affinity=len(os.sched_getaffinity(0)))

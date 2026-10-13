@@ -12,6 +12,7 @@ import os
 import traceback
 
 root = setup(COMMIT)
+log("cv", step="setup", job=f"f{FOLD}_{CONFIG}", commit=COMMIT, mode=MODE)  # kaggle/queue.py checks the commit
 os.chdir("/tmp")
 from monodist import kitti, yolo_data  # noqa: E402
 from monodist.finetune import CONFIGS  # noqa: E402
@@ -28,7 +29,7 @@ log("cv", step="yolo_data", job=name, classes=list(classes), seconds=round(time.
 args = f"--data {yaml} --project {WORK}/runs --name {name} --config {CONFIG}"
 args += " --epochs 1 --cache False" if smoke else ""
 t = time.time()
-sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.finetune {args}")
+sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.finetune {args}", timeout=remaining())
 log("cv", step="finetune", job=name, seconds=round(time.time() - t, 1))
 
 best = WORK / "runs" / name / "weights" / "best.pt"
@@ -38,7 +39,7 @@ for head, flag in (("nms", " --nms"), ("e2e", "")):
     t = time.time()
     try:
         sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.detect --weights {best} --root {root} "
-           f"--out {WORK}/det/{name}_{head} --seqs {' '.join(seqs)}{flag}" + (" --frames 20" if smoke else ""))
+           f"--out {WORK}/det/{name}_{head} --seqs {' '.join(seqs)}{flag}" + (" --frames 20" if smoke else ""), timeout=remaining())
         log("cv", step="detect", job=name, head=head, seconds=round(time.time() - t, 1))
     except Exception:
         log("cv", step="detect", job=name, head=head, error=traceback.format_exc()[-2000:])
