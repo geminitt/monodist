@@ -19,7 +19,7 @@ import numpy as np
 import torch
 
 from . import geometry, kitti
-from .detect import parse_imgsz
+from .detect import parse_imgsz, weights_identity
 from .mlp import DistanceMLP
 
 STAGES = ("read", "decode", "preprocess", "inference", "postprocess", "overhead", "distance", "total")
@@ -109,7 +109,7 @@ def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False
     return out
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--weights", required=True)
     ap.add_argument("--root", required=True)
@@ -123,13 +123,18 @@ def main():
     ap.add_argument("--pipelined", action="store_true")
     ap.add_argument("--nms", action="store_true")
     ap.add_argument("--compile", default=None, help='torch.compile mode, e.g. "reduce-overhead" (CUDA graphs)')
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     out = Path(args.out)
-    if out.exists():
+    signature = {"weights": weights_identity(args.weights), **{k: v for k, v in vars(args).items() if k not in ("weights", "root", "out")}}
+    if out.exists():  # skip only a timing of the same weights and settings
+        old = json.loads(out.read_text()).get("signature")
+        if old != signature:
+            raise SystemExit(f"{out} holds a timing of another configuration ({old}); use another --out")
         print("exists, skipping:", out)
         return
     res = run(args.weights, args.root, args.seq, args.frames, args.rounds, args.warmup, parse_imgsz(args.imgsz),
               args.half, args.pipelined, args.nms, args.compile)
+    res["signature"] = signature
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(res, indent=1))
     print(out.name, {s: round(res[s]["median_ms"][0], 2) for s in STAGES}, "fps", [round(v, 1) for v in res["fps_per_round"]])

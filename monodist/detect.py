@@ -2,9 +2,12 @@
 
     python -m monodist.detect --weights yolo26n.pt --coco --root <kitti> --out results/det/coco_1280
 
-One .npz per sequence, so an interrupted run resumes where it stopped; merge() joins them.
+One .npz per sequence, so an interrupted run resumes where it stopped; merge() joins them. The folder's
+run.json records the weights (SHA-256) and settings: a rerun resumes only with the same ones.
 """
 import argparse
+import hashlib
+import json
 import time
 from pathlib import Path
 
@@ -49,7 +52,8 @@ def detect_sequence(model, root, seq, imgsz, half, conf, coco, batch, frames=Non
 def merge(out_dir, seqs=None):
     """All per-sequence files of one run as one dict of arrays, plus image sizes per sequence."""
     out_dir = Path(out_dir)
-    seqs = seqs or sorted(p.stem for p in out_dir.glob("*.npz"))
+    # <seq>.tmp.npz is a file still being written (or left by a stopped run): never part of the results
+    seqs = seqs or sorted(p.stem for p in out_dir.glob("*.npz") if not p.name.endswith(".tmp.npz"))
     parts, sizes = [], {}
     for s in seqs:
         d = dict(np.load(out_dir / f"{s}.npz"))
@@ -59,6 +63,33 @@ def merge(out_dir, seqs=None):
     det = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
     det["box"] = det["box"].reshape(-1, 4)
     return det, sizes
+
+
+def weights_identity(weights):
+    """Name and SHA-256 of a weights or engine file (sha256 None if the file is not there)."""
+    p = Path(weights)
+    sha = hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
+    return {"name": p.name, "sha256": sha}
+
+
+def check_signature(out_dir, signature):
+    """Record the run's configuration in out_dir/run.json, or stop if the folder holds another configuration.
+
+    Outputs are skipped when they exist; without this check a rerun with other weights or settings would silently
+    keep the old files. A folder with detections but no run.json predates the check and is not resumed either.
+    """
+    f = Path(out_dir) / "run.json"
+    if f.exists():
+        old = json.loads(f.read_text())
+        if old != signature:
+            raise SystemExit(f"{out_dir} holds a run with another configuration:\n  {old}\nnot\n  {signature}\n"
+                             "use another --out")
+        return
+    if any(Path(out_dir).glob("*.npz")):
+        raise SystemExit(f"{out_dir} holds detections but no run.json: their configuration is unknown; use another --out")
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(json.dumps(signature, indent=1))
+    tmp.rename(f)
 
 
 def main():
@@ -80,6 +111,10 @@ def main():
     model = YOLO(args.weights)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    # after loading: Ultralytics downloads a missing official checkpoint (yolo26n.pt) to this path
+    check_signature(out, {"weights": weights_identity(args.weights), "coco": args.coco, "imgsz": args.imgsz,
+                          "half": args.half, "conf": args.conf, "batch": args.batch, "nms": args.nms,
+                          "frames": args.frames})
     for seq in args.seqs:
         f = out / f"{seq}.npz"
         if f.exists():
