@@ -1,4 +1,5 @@
-"""The Kaggle helpers on the local machine: a fake kaggle CLI, local processes, no Kaggle call."""
+"""The Kaggle helpers on the local machine: a fake kaggle CLI, local processes and files, no Kaggle call."""
+import hashlib
 import importlib.util
 import json
 import os
@@ -21,7 +22,7 @@ def load(name, file):
 
 
 common = load("kaggle_common", "common.py")
-queue = load("kaggle_queue", "queue.py")
+verify = load("kaggle_verify", "verify.py")
 
 
 def test_sh_timeout_kills_the_whole_command(tmp_path):
@@ -55,65 +56,66 @@ def done_proc(code, out=""):
 
 
 @pytest.mark.parametrize("answer, expected", [
-    (done_proc(0, "spritker/monodist-cv-f0-a has status \"KernelWorkerStatus.RUNNING\"\n"),
-     "spritker/monodist-cv-f0-a has status \"KernelWorkerStatus.RUNNING\""),
-    (done_proc(1, f"Cannot access kernel 'x' ({queue.NOT_FOUND}). The most likely cause ..."), ""),  # never pushed
-    (done_proc(1, "ConnectionError: Max retries exceeded"), None),  # unknown: must not push
+    (done_proc(0, "spritker/monodist-train has status \"KernelWorkerStatus.RUNNING\"\n"),
+     "spritker/monodist-train has status \"KernelWorkerStatus.RUNNING\""),
+    (done_proc(1, f"Cannot access kernel 'x' ({verify.NOT_FOUND}). The most likely cause ..."), ""),  # never pushed
+    (done_proc(1, "ConnectionError: Max retries exceeded"), None),  # unknown
     (None, None),  # CLI timeout
 ])
 def test_status(monkeypatch, answer, expected):
-    monkeypatch.setattr(queue, "kaggle", lambda *a: answer)
-    assert queue.status("spritker/monodist-cv-f0-a") == expected
+    monkeypatch.setattr(verify, "kaggle", lambda *a: answer)
+    assert verify.status("spritker/monodist-train") == expected
 
 
-def write_job(out, folder, name, seqs, commit="abc123"):
-    (out / folder).mkdir(parents=True)
-    (out / folder / "cv.jsonl").write_text(json.dumps({"step": "setup", "commit": commit}) + "\n")
-    for h in ("nms", "e2e"):
-        d = out / folder / "det" / f"{name}_{h}"
-        d.mkdir(parents=True)
-        for s in seqs:
-            np.savez(d / f"{s}.npz", frame=np.array([0, 1]), box=np.zeros((2, 4)), score=np.array([.9, .8]),
-                     cls=np.array([0, 1]), image_hw=np.array([375, 1242]))
+def write_output(out, jobs, commit="abc123", mode="full", failed=()):
+    """A downloaded train-kernel output: log, weights and detections of every job."""
+    out.mkdir(parents=True, exist_ok=True)
+    log = [{"step": "setup", "commit": commit, "mode": mode}, {"step": "end", "failed": list(failed)}]
+    (out / "train.jsonl").write_text("".join(json.dumps(r) + "\n" for r in log))
+    for job, seqs in jobs.items():
+        sha = None
+        if job != "coco":
+            w = out / "runs" / job / "weights"
+            w.mkdir(parents=True)
+            (w / "best.pt").write_bytes(job.encode())
+            sha = hashlib.sha256(job.encode()).hexdigest()
+        for h in ("nms", "e2e"):
+            d = out / "det" / f"{job}_{h}"
+            d.mkdir(parents=True)
+            (d / "run.json").write_text(json.dumps({"weights": {"name": "best.pt", "sha256": sha}, "nms": h == "nms",
+                                                    "frames": 20 if mode == "smoke" else None}))
+            for s in seqs:
+                np.savez(d / f"{s}.npz", frame=np.array([0, 1]), box=np.zeros((2, 4)), score=np.array([.9, .8]),
+                         cls=np.array([0, 1]), image_hw=np.array([375, 1242]))
 
 
-def test_done_checks_files_content_and_commit(tmp_path, monkeypatch):
-    monkeypatch.setattr(queue, "OUT", tmp_path)
-    seqs = ["0000", "0001"]
-    write_job(tmp_path, "f0-a", "f0_a", seqs)
-    assert queue.done("f0-a", "f0-a", seqs, "abc123")
-    assert not queue.done("f0-a", "f0-a", seqs, "other")  # output of another commit
-    assert not queue.done("f0-a", "f0-a", seqs + ["0002"], "abc123")  # a sequence missing
-    bad = tmp_path / "f0-a" / "det" / "f0_a_e2e" / "0001.npz"
-    bad.write_bytes(b"truncated")
-    assert not queue.done("f0-a", "f0-a", seqs, "abc123")
-    np.savez(bad, frame=np.array([5000]), box=np.zeros((1, 4)), score=np.array([.9]), cls=np.array([0]),
-             image_hw=np.array([375, 1242]))  # frame outside sequence 0001
-    assert not queue.done("f0-a", "f0-a", seqs, "abc123")
+def test_check_accepts_a_complete_output(tmp_path):
+    write_output(tmp_path, verify.expected_jobs())
+    assert verify.check(tmp_path, "abc123", "full") == []
 
 
-def test_failed_jobs_give_a_failing_exit_code(tmp_path, monkeypatch):
-    monkeypatch.setattr(queue, "OUT", tmp_path)
-    monkeypatch.setattr(queue, "status", lambda slug: "has status \"KernelWorkerStatus.ERROR\"")
-    monkeypatch.setattr(queue.time, "sleep", lambda s: None)
-    monkeypatch.setattr(sys, "argv", ["queue.py", "--commit", "abc123", "--jobs", "f0-a"])
-    assert queue.main() == 1
+def test_check_finds_every_kind_of_problem(tmp_path):
+    jobs = verify.expected_jobs()
+    write_output(tmp_path, jobs, failed=["f1_b"])
+    assert verify.check(tmp_path, "other", "full")[0].startswith("log: setup")       # another commit
+    assert any("failed jobs" in p for p in verify.check(tmp_path, "abc123", "full"))
+    write_output(tmp_path / "b", jobs)
+    (tmp_path / "b" / "det" / "f0_a_e2e" / "0001.npz").write_bytes(b"truncated")
+    (tmp_path / "b" / "det" / "coco_nms" / "0000.npz").unlink()
+    np.savez(tmp_path / "b" / "det" / "final_a_nms" / "0001.npz", frame=np.array([5000]), box=np.zeros((1, 4)),
+             score=np.array([.9]), cls=np.array([0]), image_hw=np.array([375, 1242]))  # frame outside the sequence
+    (tmp_path / "b" / "runs" / "f2_b" / "weights" / "best.pt").write_bytes(b"retrained")  # detections of other weights
+    problems = verify.check(tmp_path / "b", "abc123", "full")
+    for text in ("f0_a_e2e: missing or invalid", "coco_nms: missing or invalid", "final_a_nms: missing or invalid",
+                 "f2_b_nms: detections were made with other weights"):
+        assert any(p.startswith(text) for p in problems), text
+    assert verify.check(tmp_path / "b", "abc123", "smoke")  # settings of a full run are not a smoke run
 
 
-def test_unknown_status_is_not_pushed(tmp_path, monkeypatch):
-    monkeypatch.setattr(queue, "OUT", tmp_path)
-    answers = iter([None, "has status \"KernelWorkerStatus.CANCEL_ACKNOWLEDGED\""])
-    monkeypatch.setattr(queue, "status", lambda slug: next(answers))
-    monkeypatch.setattr(queue.time, "sleep", lambda s: None)
-    pushes = []
-    real_run = subprocess.run
-    monkeypatch.setattr(queue.subprocess, "run", lambda cmd, **kw: pushes.append(cmd) or real_run(["true"]))
-    monkeypatch.setattr(sys, "argv", ["queue.py", "--commit", "abc123", "--jobs", "f0-a"])
-    assert queue.main() == 1 and pushes == []
-
-
-def test_finished_queue_exits_cleanly(tmp_path, monkeypatch):
-    monkeypatch.setattr(queue, "OUT", tmp_path)
-    write_job(tmp_path, "f0-a", "f0_a", queue.kitti.SEQUENCES)
-    monkeypatch.setattr(sys, "argv", ["queue.py", "--commit", "abc123", "--jobs", "f0-a"])
-    assert queue.main() == 0
+def test_failing_check_gives_exit_code_1(tmp_path, monkeypatch):
+    write_output(tmp_path, {"coco": ["0000"]})
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path)])
+    assert verify.main() == 1  # every other job is missing
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path), "--jobs", "coco"])
+    monkeypatch.setattr(verify, "expected_jobs", lambda: {"coco": ["0000"]})
+    assert verify.main() == 0

@@ -1,6 +1,6 @@
 {
-  "id": "spritker/monodist-cv",
-  "title": "monodist cv",
+  "id": "spritker/monodist-train",
+  "title": "monodist train",
   "code_file": "run.py",
   "language": "python",
   "kernel_type": "script",

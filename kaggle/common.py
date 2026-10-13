@@ -13,8 +13,11 @@ from pathlib import Path
 
 REPO = "https://github.com/geminitt/monodist.git"
 ULTRALYTICS = "ultralytics==8.4.163"
-SRC = Path("/tmp/monodist")
-WORK = Path("/kaggle/working")
+# MONODIST_LOCAL=<dir> runs a built kernel on this machine for an end-to-end check before a push: no install, no
+# clone (the code is the working tree in the current directory), the KITTI data of data/, outputs under <dir>.
+LOCAL = os.environ.get("MONODIST_LOCAL")
+SRC = Path.cwd() if LOCAL else Path("/tmp/monodist")
+WORK = Path(LOCAL) if LOCAL else Path("/kaggle/working")
 START = time.time()
 DEADLINE = 11 * 3600  # seconds from kernel start: stop work before Kaggle's 12-hour session limit
 
@@ -44,12 +47,17 @@ def sh(cmd, timeout=None):
 
 
 def setup(commit):
-    sh(f"pip install -q {ULTRALYTICS}", timeout=min(1200, remaining()))
-    if not SRC.exists():
-        sh(f"git clone -q {REPO} {SRC}", timeout=min(600, remaining()))
-    sh(f"cd {SRC} && git fetch -q origin && git checkout -q {commit}", timeout=min(600, remaining()))
-    sys.path.insert(0, str(SRC))
-    root = next(Path("/kaggle/input").glob("**/training/label_02")).parent
+    WORK.mkdir(parents=True, exist_ok=True)
+    if LOCAL:
+        sys.path.insert(0, str(SRC))
+        root = SRC / "data" / "kitti_tracking" / "training"
+    else:
+        sh(f"pip install -q {ULTRALYTICS}", timeout=min(1200, remaining()))
+        if not SRC.exists():
+            sh(f"git clone -q {REPO} {SRC}", timeout=min(600, remaining()))
+        sh(f"cd {SRC} && git fetch -q origin && git checkout -q {commit}", timeout=min(600, remaining()))
+        sys.path.insert(0, str(SRC))
+        root = next(Path("/kaggle/input").glob("**/training/label_02")).parent
     print("KITTI training dir:", root, flush=True)
     import torch
     print("torch", torch.__version__, "| GPUs:", [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])

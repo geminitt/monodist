@@ -17,11 +17,12 @@ ap.add_argument("--mode", default=None)
 ap.add_argument("--commit", default=None, help="defaults to the current HEAD, which must be pushed")
 ap.add_argument("--set", nargs="*", default=[], help="NAME=VALUE overrides of top-level constants")
 ap.add_argument("--job", default=None, help="suffix of a separate kernel, e.g. f0-a: runs in parallel with others")
+ap.add_argument("--build-only", action="store_true", help="write build/run.py without pushing (for a local run)")
 args = ap.parse_args()
 
 commit = args.commit or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 remote = subprocess.run(["git", "branch", "-r", "--contains", commit], capture_output=True, text=True).stdout
-assert remote.strip(), f"commit {commit} is not on the remote yet: push it first"
+assert args.build_only or remote.strip(), f"commit {commit} is not on the remote yet: push it first"
 
 src = (HERE / args.kernel / "run.py").read_text()
 common = (HERE / "common.py").read_text()
@@ -44,4 +45,7 @@ if args.job:
     build.mkdir(exist_ok=True)
     (build / "run.py").write_text(src)
 (build / "kernel-metadata.json").write_text(json.dumps(meta, indent=1))
-subprocess.run(["kaggle", "kernels", "push", "-p", str(build)], check=True)
+if args.build_only:
+    print(build / "run.py")
+else:
+    subprocess.run(["kaggle", "kernels", "push", "-p", str(build)], check=True)
