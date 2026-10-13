@@ -28,6 +28,21 @@ def test_ensemble_prediction_is_the_geometric_mean():
     assert np.allclose(mlp.predict(models, x), np.exp(np.log(each).mean(0)), rtol=1e-5)
 
 
+def test_saved_ensemble_predicts_the_same(tmp_path):
+    rng = np.random.default_rng(2)
+    x = rng.normal(size=(100, 4))
+    z = np.exp(x[:, 0] * 0.2 + 2)
+    models, _, _ = mlp.train(x, z, np.arange(100) % 2, max_epochs=3, n_models=2)
+    meta = {"features": ["a", "b", "c", "d"], "conf": {"Car": 0.3}}
+    mlp.save(tmp_path / "d.pt", models, meta)
+    loaded, m2 = mlp.load(tmp_path / "d.pt", features=("a", "b", "c", "d"))
+    assert m2 == meta and len(loaded) == 2
+    assert np.array_equal(mlp.predict(loaded, x), mlp.predict(models, x))
+    import pytest
+    with pytest.raises(ValueError, match="trained on features"):
+        mlp.load(tmp_path / "d.pt", features=("a", "b"))
+
+
 def test_a_feature_constant_in_training_stays_finite():
     """A one-hot column all zero in training (a class absent from the train rows) must not blow up at test time."""
     rng = np.random.default_rng(3)

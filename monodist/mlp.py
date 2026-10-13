@@ -1,4 +1,8 @@
-"""The learned distance model: a small MLP from box features to log Z, trained from scratch on CPU."""
+"""The learned distance model: a small MLP from box features to log Z, trained from scratch on CPU.
+
+save/load keep an ensemble together with what it needs to be used again: the feature names (the input
+contract), the class names, the score thresholds and constants chosen with it, and their provenance.
+"""
 import numpy as np
 import torch
 from torch import nn
@@ -71,3 +75,23 @@ def train(x, z, groups, max_epochs=150, seed=0, n_models=5):
     best = int(np.argmin(mean_curve)) + 1
     models = [_fit(x, logz, best, seed + k)[0] for k in range(n_models)]
     return models, best, mean_curve
+
+
+def save(path, models, meta):
+    """Write an ensemble and its metadata (JSON-like dict) to one file."""
+    torch.save({"n_in": models[0].net[0].in_features, "hidden": models[0].net[0].out_features,
+                "state_dicts": [m.state_dict() for m in models], "meta": meta}, path)
+
+
+def load(path, features=None):
+    """The ensemble and metadata of save(); with features given, refuse a model trained on other inputs."""
+    blob = torch.load(path, map_location="cpu", weights_only=True)
+    meta = blob["meta"]
+    if features is not None and tuple(meta["features"]) != tuple(features):
+        raise ValueError(f"{path}: trained on features {meta['features']}, not {list(features)}")
+    models = []
+    for sd in blob["state_dicts"]:
+        m = DistanceMLP(blob["n_in"], blob["hidden"])
+        m.load_state_dict(sd)
+        models.append(m.eval())
+    return models, meta
