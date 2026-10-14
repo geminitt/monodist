@@ -12,6 +12,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -23,16 +24,19 @@ from monodist import kitti  # noqa: E402
 OUT = HERE.parent / "runs" / "kaggle" / "train"
 SLUG = "spritker/monodist-train"
 TIMEOUT = 300  # seconds for one kaggle CLI call: an operational limit, not a measured duration
+# The smoke run's 494 output files took 267 s to download on 2026-10-14; a full run has larger files.
+DOWNLOAD_TIMEOUT = 3600  # seconds: an operational limit
+DOWNLOAD_TRIES = 3
 # What Kaggle CLI 2.2.3 printed (exit 1) on 2026-10-13 for a kernel that does not exist or was deleted
 NOT_FOUND = "Permission 'kernels.get' was denied"
 DET_KEYS = {"frame", "box", "score", "cls", "image_hw"}
 CONFIGS = ("a", "b")
 
 
-def kaggle(*args):
-    """Run the kaggle CLI; None if it did not answer within TIMEOUT."""
+def kaggle(*args, timeout=TIMEOUT):
+    """Run the kaggle CLI; None if it did not answer within timeout seconds."""
     try:
-        return subprocess.run(["kaggle", *args], capture_output=True, text=True, timeout=TIMEOUT)
+        return subprocess.run(["kaggle", *args], capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         return None
 
@@ -134,8 +138,16 @@ def main():
             print(f"{SLUG}: status {s!r}; not downloading")
             return 1
         folder.mkdir(parents=True, exist_ok=True)
-        if kaggle("kernels", "output", SLUG, "-p", str(folder)) is None:
-            print("download timed out")
+        # The CLI skips files already downloaded, so a retry fetches only what is missing. On 2026-10-14 a call
+        # returned with 190 of 494 files; check() below finds any file still missing.
+        for k in range(DOWNLOAD_TRIES):
+            r = kaggle("kernels", "output", SLUG, "-p", str(folder), "--page-size", "200", timeout=DOWNLOAD_TIMEOUT)
+            if r is not None and r.returncode == 0:
+                break
+            tail = "timed out" if r is None else f"exit {r.returncode}: {(r.stdout + r.stderr).strip()[-500:]}"
+            print(f"download failed (try {k + 1} of {DOWNLOAD_TRIES}): {tail}")
+            time.sleep(30 * 2 ** k)
+        else:
             return 1
     problems = check(folder, args.commit, args.mode, args.jobs)
     for p in problems:

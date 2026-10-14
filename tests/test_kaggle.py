@@ -119,3 +119,19 @@ def test_failing_check_gives_exit_code_1(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path), "--jobs", "coco"])
     monkeypatch.setattr(verify, "expected_jobs", lambda: {"coco": ["0000"]})
     assert verify.main() == 0
+
+
+def test_download_retries_a_failed_cli_call_and_reports_it(tmp_path, monkeypatch, capsys):
+    calls = []
+
+    def fake(*args, timeout=None):
+        calls.append(args)
+        if args[:2] == ("kernels", "status"):
+            return done_proc(0, "x has status \"KernelWorkerStatus.COMPLETE\"\n")
+        return done_proc(1, "HTTPError 429")  # the download fails every time
+    monkeypatch.setattr(verify, "kaggle", fake)
+    monkeypatch.setattr(verify.time, "sleep", lambda s: None)
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path), "--download"])
+    assert verify.main() == 1
+    assert sum(c[:2] == ("kernels", "output") for c in calls) == verify.DOWNLOAD_TRIES
+    assert "download failed" in capsys.readouterr().out
