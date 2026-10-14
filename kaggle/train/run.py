@@ -56,18 +56,21 @@ lock = threading.Lock()
 # together both see the RAM free and can together fill more than there is. A shared budget prevents that: a job
 # caches its images only if its share fits; otherwise it reads them from disk (slower, same result).
 FRAME_BYTES = 1280 * 386 * 3  # one KITTI frame (1242 x 375) resized to imgsz 1280, uint8 RGB
-HEADROOM = 8 * 2**30  # bytes kept free for the processes, data loaders and detection
-budget = {"free": mem.available - HEADROOM}
+# RAM a training job uses besides its image cache (process, 4 train + val data loader workers). Measured on
+# Kaggle 2026-10-14 (31.3 GiB total): two jobs caching 8.8 GiB each were killed when training started, two caching
+# 6.3 + 5.7 GiB were not, so the overhead lies between 6.9 and 9.7 GiB per job; 10 GiB covers that range.
+JOB_OVERHEAD = 10 * 2**30
+budget = {"free": mem.available}
 
 
 def reserve_cache(n_frames):
-    """Bytes reserved for caching n_frames in RAM, or 0 when they do not fit (the job then does not cache)."""
-    need = n_frames * FRAME_BYTES
+    """Whether the job caches its n_frames in RAM, and the bytes it holds from the budget until it ends: its
+    overhead always, its cache only when both fit in what is left."""
     with lock:
-        if smoke or need > budget["free"]:
-            return 0
-        budget["free"] -= need
-        return need
+        cache = not smoke and n_frames * FRAME_BYTES + JOB_OVERHEAD <= budget["free"]
+        held = JOB_OVERHEAD + (n_frames * FRAME_BYTES if cache else 0)
+        budget["free"] -= held
+        return cache, held
 
 
 def release_cache(n):
@@ -89,16 +92,16 @@ def run_job(name, part, seqs, cfg, device):
             data = yolo_data.build(root, f"/tmp/yolo_{name}", split=part, splits=("train", "val"),
                                    frames=20 if smoke else None)
         n_frames = sum(20 if smoke else kitti.FRAMES[q] for p in ("train", "val") for q in part[p])
-        held = reserve_cache(n_frames)
+        cache, held = reserve_cache(n_frames)
         args = f"--data {data} --weights {coco_pt} --project {WORK}/runs --name {name} --config {cfg} --batch {batch}"
-        args += f" --cache {'ram' if held else 'False'}" + (" --epochs 1" if smoke else "")
+        args += f" --cache {'ram' if cache else 'False'}" + (" --epochs 1" if smoke else "")
         args += " --workers 2" if LOCAL else ""
         try:
             sh(f"{env} python -m monodist.finetune {args}", timeout=remaining())
         finally:
             release_cache(held)
         log("train", job=name, step="finetune", device=device, seconds=round(time.time() - t, 1),
-            cache_gib=round(held / 2**30, 1), frames=n_frames)
+            cache_gib=round((held - JOB_OVERHEAD) / 2**30, 1), frames=n_frames)
         weights, extra = WORK / "runs" / name / "weights" / "best.pt", ""
         (weights.parent / "last.pt").unlink(missing_ok=True)  # only best.pt is used; saves output space
     for head, flag in (("nms", " --nms"), ("e2e", "")):
