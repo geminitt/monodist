@@ -1,0 +1,63 @@
+{
+ "source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+ "scoring_driver_sha256": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314",
+ "final_configuration": "b",
+ "test_sequences": [
+  "0003",
+  "0007",
+  "0011",
+  "0016",
+  "0017"
+ ],
+ "models": {
+  "coco_nms": {
+   "distance_sha256": "255ca3b4cc3ed4dcde601d6f2dab099a1908af230dce855614e7168a5b676173",
+   "thresholds": {
+    "Car": 0.34000012278556824,
+    "Van": 1.0,
+    "LargeVehicle": 0.4162577688694,
+    "Pedestrian": 0.3664390742778778,
+    "Cyclist": 1.0
+   },
+   "temporal": {
+    "meas_rel": 0.05,
+    "accel": 4.0
+   }
+  },
+  "finetuned_nms": {
+   "distance_sha256": "de6e1ee53d34f98c29eaab90290b0dd6d4dd120805f0200ff06e190f92469c94",
+   "thresholds": {
+    "Car": 0.2543703019618988,
+    "Van": 0.23012670874595642,
+    "LargeVehicle": 0.48047327995300293,
+    "Pedestrian": 0.28312745690345764,
+    "Cyclist": 0.20863881707191467
+   },
+   "temporal": {
+    "meas_rel": 0.02,
+    "accel": 1.0
+   }
+  },
+  "finetuned_e2e": {
+   "distance_sha256": "94b3bf0c2fbaa6e7a8b890c8401ea40f83da36bc9a24ea3fe5a8fcdb6eee2f0c",
+   "thresholds": {
+    "Car": 0.207401841878891,
+    "Van": 0.16455304622650146,
+    "LargeVehicle": 0.22183342278003693,
+    "Pedestrian": 0.2235332727432251,
+    "Cyclist": 0.12637734413146973
+   },
+   "temporal": {
+    "meas_rel": 0.02,
+    "accel": 0.25
+   }
+  }
+ },
+ "software_tests_may_use_TEST": true,
+ "pipeline_choices_fixed_before_final_scoring": true,
+ "preflight_complete": {
+  "signature": "50626fda596ee67ab5a39210c60dd8f53cb670c6266390e73b5de5c51c2fbb26",
+  "configurations": 3,
+  "pipeline_test_evaluated": false
+ }
+}

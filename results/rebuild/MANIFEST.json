@@ -1,0 +1,578 @@
+{
+ "measurement_source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+ "final_configuration": "b",
+ "train_kernel": {
+  "id": "spritker/monodist-train",
+  "version": 4
+ },
+ "timing_kernel": {
+  "id": "spritker/monodist-eval",
+  "version": 8
+ },
+ "final_freeze": {
+  "source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+  "scoring_driver_sha256": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314",
+  "final_configuration": "b",
+  "test_sequences": [
+   "0003",
+   "0007",
+   "0011",
+   "0016",
+   "0017"
+  ],
+  "models": {
+   "coco_nms": {
+    "distance_sha256": "255ca3b4cc3ed4dcde601d6f2dab099a1908af230dce855614e7168a5b676173",
+    "thresholds": {
+     "Car": 0.34000012278556824,
+     "Van": 1.0,
+     "LargeVehicle": 0.4162577688694,
+     "Pedestrian": 0.3664390742778778,
+     "Cyclist": 1.0
+    },
+    "temporal": {
+     "meas_rel": 0.05,
+     "accel": 4.0
+    }
+   },
+   "finetuned_nms": {
+    "distance_sha256": "de6e1ee53d34f98c29eaab90290b0dd6d4dd120805f0200ff06e190f92469c94",
+    "thresholds": {
+     "Car": 0.2543703019618988,
+     "Van": 0.23012670874595642,
+     "LargeVehicle": 0.48047327995300293,
+     "Pedestrian": 0.28312745690345764,
+     "Cyclist": 0.20863881707191467
+    },
+    "temporal": {
+     "meas_rel": 0.02,
+     "accel": 1.0
+    }
+   },
+   "finetuned_e2e": {
+    "distance_sha256": "94b3bf0c2fbaa6e7a8b890c8401ea40f83da36bc9a24ea3fe5a8fcdb6eee2f0c",
+    "thresholds": {
+     "Car": 0.207401841878891,
+     "Van": 0.16455304622650146,
+     "LargeVehicle": 0.22183342278003693,
+     "Pedestrian": 0.2235332727432251,
+     "Cyclist": 0.12637734413146973
+    },
+    "temporal": {
+     "meas_rel": 0.02,
+     "accel": 0.25
+    }
+   }
+  },
+  "software_tests_may_use_TEST": true,
+  "pipeline_choices_fixed_before_final_scoring": true,
+  "preflight_complete": {
+   "signature": "50626fda596ee67ab5a39210c60dd8f53cb670c6266390e73b5de5c51c2fbb26",
+   "configurations": 3,
+   "pipeline_test_evaluated": false
+  }
+ },
+ "development_manifest": {
+  "signature": "7f55d7741128269753e835abd09c2f01b9774610bf58b918f783cc4c08bd9dd7",
+  "commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+  "files": {
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/analysis.py": "303a917523cc23013725fa470833edc06db05ee457c799d63fb6df203beb9ed1",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/calibrate.py": "c3e87bc939a901d8f869e50805c0d711c9adac84953d0e09ce944c777eb5d699",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/crossval.py": "d44f36d7dd20c03f190f5de998b58b279055d852a3198c09cc1d7725cead512c",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/detect.py": "8733ba9998ed2960f581a099371b1f933349d30b0e97c0ff155ecf7519461124",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/evaluate.py": "ba942ed1fa90fb15ab691b0413cdabf19b4e326954e6ba7940d22425eece4750",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/finetune.py": "0576526666abe5485badfa48bd387a48b474d0372e687314b4d815ab56faa10d",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/geometry.py": "98f1916d1cb3e01d899f78a03a6090663eba2a18c75cac2062d068ad7c7235dd",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/kitti.py": "8cae5ebd40a4136244f2349d1aca8e7a520818137cb00d97e6df920c3aef925e",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/latency.py": "b3e83efd494fdc5d6d8a550441775a5b2ba9a4a303c596bc73c8752b64845ff9",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/match.py": "5bfe1efce4971f34ab8970f5d5e88c9c94b0ddd86d8657f3c6128d1cb9f3cbb0",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/metrics.py": "8a11e2298afc703adafa3caa02f34e8a056e9ba9f6ad02ddca5324a724e612f2",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/mlp.py": "b5aad8c86141f4aaca1ad2a6c5cc0ed303c4c136151cc0b02616f66009d7bffc",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/pipeline.py": "6b569fa53c77f31b07dc35f3427b6685b7d347caa1662e6dfa09bc2ab04376a7",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/profile_gpu.py": "a1b701917cb1d476cf43ff38928a086d5cb997a5836a2015b7c3d0f2225f854e",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/report.py": "c78727769af6f3996e258946121113d7cf79efc869a9b0e0d4b4a2b0cf6c1cb0",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/temporal.py": "60403d0e939e2480013452802ec15ff1e6f7d8e84a17bba93d040374090dfcb7",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/yolo_data.py": "26abe102009fe850c8fd1d6b12bbc07f6cc7aedf92211dde5aed5cbfdf8f0508",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/conftest.py": "7819c50135e52d521c7d0f187951d1a47df7d58aef131dc983dff16a6e3c384f",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_analysis.py": "5922a3b28fe00e034b71fbc88e0c01478d15490e171cf6881ade11c8c1ad9d68",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_calibrate.py": "261da49eb871a1b12fdd1fbd75baeadd0820dede42b01b474d1fd77e4cb15267",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_crossval.py": "d1474116a0a14bd1a93a8a7108e966aaee81dadbf98fe8b31dd3b006934cf364",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_detect.py": "ce2534aa5eecba2e5c8246ffebaa114809b18215422dd1e926e53ec04c53722f",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_evaluate.py": "174d8359db0bf959e432a180afa0870821ab18b036da58cf58ecd66258faacbd",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_geometry.py": "c7a02db49cecf3962b11cbc8d17f1c8e7a79eee605654ddc0391822b70a70344",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_kaggle.py": "129087f823904909ce09e9efbedcebf7377c9252074b445a59f4d7602efc4003",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_kitti.py": "a750662181a1311f58e0756db546dcc86ec3d8f5d4bfec23bb25517766ef8e66",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_latency.py": "dfe14e9b126771f175589547d1a52cfe247e73e9b33aa3f223a69dcd99d30521",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_match.py": "91a1403ae4be65de9e59d60281fe56d12dfd00641b9488b64bb1968b5cf23e80",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_metrics.py": "d74d16cfa5ba47c97df03d3d23d0c67c9c7d85a6920db1e3049423d6aacd2324",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_mlp.py": "62da49a31db44e23a2afdfccdcb002b784e1d7e71606207d8057e0ec1e58bdd6",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_pipeline.py": "28c51679801a330e9218bb5a13dcf6b2fb0034f1e5acf8894f93e76e3ecf3f5f",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_report.py": "e41727eb5b7c631f89df878bad0baa78ea67fd2fd9b0f6473aa0d44ab17dae59",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_temporal.py": "b5eb0374e4e3d761c74298f018a26d3065dd7f96b92bf2aa1f8ecfa39490efa9",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_yolo_data.py": "48861cd31e60beb9e91950c6fea6caffdad44c609953198967237a149d28228d",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pixi.lock": "d7b68f040cd975b3a75192a8639cfeb820fc7a86023063915e597e8850fc8d02",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pixi.toml": "27042fed4b635a35f88cd0b2e8c55a3591faa2b366befad3bf8cd08621b5a8c4",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pyproject.toml": "1a3b257c2ceed99b0a16c4b2495b67e1e92f61c9d15ff90fff329fa8d19e78c6",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0000.txt": "97f772a27181dfc7ef51b3e64b86bd42e682753b6855fdc58d259ecbed501fd4",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0000.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0001.txt": "267c8158eba4581729f84ba971d7c35bb8a0bf1bd3443b7edb6e601cbc21d08a",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0001.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0002.txt": "ba5e11b8a27de653adba8d0641dc0abcb8e3e4d854eb391699748a568e1fe24d",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0002.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0004.txt": "ef85ef77e0769b1902a9e7af17688fba3366e2265157490aa0cf6bc702377757",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0004.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0005.txt": "69366a60b3b7636937bf7e78b91959ca9f239f05e3dcbd90737f1753bf06232e",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0005.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0006.txt": "9b712c3530e7383aa144881e40409426618fae9002d7bb51050dcd81925320df",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0006.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0008.txt": "6d67d1044f50e8cfdb4283f474191a9045bd166813beff4451ee668f542ff5b5",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0008.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0009.txt": "3bfe22ce430bdfb73923c4df2778879b3b637dfa00e8d5e4a2c42f0cfb97c953",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0009.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0010.txt": "d4a1862adb05c25c6a701dcdb28d79062666ad439407242631548dbff0f7bbf6",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0010.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0012.txt": "304d0bf651529249e1b3a997114376f7c74c9df815d1a7ecf5654fdf3c3552d6",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0012.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0013.txt": "29275f8a808298e4c816787bcc68d8cb891a1eeaf29e80081548af4493a41180",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0013.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0014.txt": "2410ee567142c11f4e0c62da47bc1ea3dafbb339eb50ce1e581a9b3b8bcb8d47",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0014.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0015.txt": "54787b567aa27c390c345b51e1b408ce0b07ec321b26496ee66a8cf05c2fa40c",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0015.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0018.txt": "02298e3cd13a77eb14b511aa66c8dd126680305f856bc4247fe2971b9598b0d8",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0018.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0019.txt": "721ac76b2353f019003c91d5de1b17ba87da966ce52437709af02fa6750ff125",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0019.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0020.txt": "8e14201118adc5264ec228650715bcf5828a43abdf066cc2a02ac15982f23a2a",
+   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0020.txt": "ff301b07d1f5f4491366b2c09bbb624e23d0be411a50e0384659893793c84cc7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/run.json": "780e7d0010cea91d8eb119b7d7d096dc9abac8e0c289207b3fa86eaed8f9fd71",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0000.npz": "a5658fccf2553f2600b6ed50c6ae9acfc3a1e5fd5b0c344df84cc6186afc0fbf",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0001.npz": "686565739a8e789d78b89b7e2102571482b3e63fb851202267b3e3c7058cf39a",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0002.npz": "9f07c86ed1a6ed01f7d6f7cd96ff0d79bc56135e383db4c9ed13988f6ef9a8eb",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0004.npz": "27e86912cc7fb2955bf815c7a00738109d1a9a9d8a725983164c8cba3581e09c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0005.npz": "f063333a2289628a9532a2e731612b36d2a75fca7bf6322f2e543e234bec10a4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0006.npz": "6929593396e20efdf3b43dd982316ee1567fb5c72e7754741840c037dda8bf98",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0008.npz": "ba95157f2102fadf56d601360568bd835b09a2fe7d0788a1804a54c5b8edd633",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0009.npz": "14c8ecc25368f4b29a5f7ba3a5e80593585409fd9880e4f3b4bb2577db13ea28",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0010.npz": "edc561d449fcee369a25070bb59c327c4adf7cee7a8a6b90c84c6cdb24d53f03",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0012.npz": "4798c0fcd742dd1f6286bde4c13562299ff8242c04cf209f6025a5a8a7a94f8b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0013.npz": "38865829797f9fd297f5a9d21408a3b64d71d95fb03da263d1bd476d1a95cf79",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0014.npz": "188c5b0df7804327bc349eeac56d0d254e8336813512195bdcfcbf8c792c6f27",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0015.npz": "761df5d96a9e18624821ee51d456e4f837d5c13d05271626513c9895bbc93e28",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0018.npz": "f56bbde06ee86368e10301315e60dcfcb4e0d9ec5059b4e2d19c593a67a35473",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0019.npz": "b4e4ba40f684dfd92f9de52b0f9f41c19444ce4cc11d301109e8d9cc3eb7b97d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0020.npz": "ed20b22133daa94b8ed139a3f1acfc9cc2ae5e15daaf9fb1585e0815547ec39a",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/run.json": "27697054a880dacdf62078a13b9c5778f26cbf8f3b39f1b7866ddcf33f770966",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0000.npz": "c7e5b16be79a5a9767b0afea678dd23b78dc41151bb625a512b1e8ceea598529",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0001.npz": "5477c2e38a5b76516f62d01bea313db4572242e6064dae329ff52a3a7412af74",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0002.npz": "512407d1d6aa95b0eb0eefb8d62404ec9e55c36cb3172fac05d37ecdcde3e609",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0004.npz": "a28dbac65287c40e89071dd43db7905858ee81a58b72c9e6cc25c54c1eb5ff72",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0005.npz": "ae5f56b3a36912eb89c6aed9060cea9b38dd5a3d1df84a34549c3a812623b16a",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0006.npz": "34d0da2cbba60df9cf5ccc264d05aaa499eaffe7c1af791be7afa14acc1c0800",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0008.npz": "befb9747d885fa0c1be73037fb2cafe6025d14d764c52fa6be53ab1567a47a71",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0009.npz": "ed6aabe711b96a3251fab2653a0e62a3dd1288b65a5ddbecf541fab99ca1e8d5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0010.npz": "148303e53e7dde588ea8e77112dc54fea1fe2831b680dfff846083535704b2e2",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0012.npz": "8d2df32cacced57ca1d58d5f00aaceb064eef5854058661e77307507f54e8992",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0013.npz": "22f39ab9b0f6dc1125a1e6a06d85a6185948adbf11afec2f756a758231be98ff",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0014.npz": "94d2418c6f7050ebf22bc8cdd01def5d4b6a476126e5f8bf3aa7dbbe2a559bfb",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0015.npz": "f43eebbc7d996576ff70b416368db8e330e2dd539a494bbad5dd9b094d9eb345",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0018.npz": "867c47b979739930a259aa8839ac111079ee85b41a0113d4caf3140377264e46",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0019.npz": "5f96184647a25913cd2569e1938e48c3fd970a6cad57ec32f72265fff46ae6a0",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_e2e/0020.npz": "534df4728896bed7005a7a0945edc67bcd4e9a05871e1b3f746ef6e296a4a5e7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/run.json": "09885f2103c3529651d7466d121b8a4510ec9f50140c53efa2b2a93b2fbfa252",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0000.npz": "c1249a43093c0bb9a3e6895b3e4cab170a06454a91570c8a95150465a74a23b5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0001.npz": "e86ecae51c437e5dbd6048d1b0bdcf92fb2a5e60356a44c609f7483e326c65cd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0002.npz": "f2e5f338b5726617031c7ff02ed94a672d26a6260a4753b9a86e20b6efa09906",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0004.npz": "53234beec26331fefcb4ecedc77ae4d7f68bfbafbe0b3523f2851fbb0084f181",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0005.npz": "722eff57b21d0dbc280abc77e549ba82ebc21133cc4efccdc690c24f809b6850",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0006.npz": "559c71bf8131dd8998347e1d3597952329a6dbd0a965c4a4b0ed6d790323f234",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0008.npz": "ec9982fdda415567d8e1e285a1bae40ab43b6100d61705b560fed385d5bd27e1",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0009.npz": "8d06a35ce4a3bdd9e79dedeaed4ff8c20379dfb17a418affa2f70a51171e02f7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0010.npz": "4244e5b7b8e6fd28bb1add701e5d4000b9122aaa3e8afb59ceebe3e2f5a1f1c6",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0012.npz": "7d45d30ec6e1df0fd23e59d69091da298e5334a6dd69430448426691c829a33c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0013.npz": "2f4772cf3bf7908a07ed223adf9d4465087bbe87efea6d4023ea3c048172d03c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0014.npz": "0632934a0a162423753a12604299b0da2432c19d5e31bc81a104bb34a66af63c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0015.npz": "f98a078022d62f4472d4efed393c4bb023df143a0c273d72f3717915ae0e5af1",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0018.npz": "92371e4c840ebe8f8b88962233d28eeabb77ae623dcb364110e41db1d0466bff",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0019.npz": "c28fb9932cc0abc58bf03eda9964796df1845fb5a63dee6a4d667dc671192127",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_a_nms/0020.npz": "77e72e5e4ca06e6c292417b4dfad4014d2de899c7339de9ebfe81096c909ec47",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/run.json": "54983fc50a55c87ee7b966173158ec93b5c6584fe1ddaeed775111d53f4c1a14",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0000.npz": "248608c2a7af96b77fc7ff62ba30ea540dc87ca7c62025ece7828ed254b25092",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0001.npz": "efc7b3c809bae8646cac2466f1462583a22d10a5e5595ba5c586c9853bcfb3e9",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0002.npz": "0d5de6d5650adca62a5837a47c6c7f6ee293fe70673a538869a960bd28c29534",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0004.npz": "f90b43dd6a282e2d2ed13b4628593dc2b6c213b57c84e312b99683dbfceafc25",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0005.npz": "ccb65b815729eeed614c034b88dc2485249fab798f1b7edfa3348456b13b225b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0006.npz": "a7e789836ca6f71edaefa1e35fb36e6569bb0e63e30af4db0eceb99ffb1835fc",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0008.npz": "86244a70352fe890a10dc87aef80a3b7d5d2f960a5c7c8fef73c48c212d64503",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0009.npz": "d610468a5fad8fadf62c73404c10f1f5f1cb0435338711db2e40f2b29ebfb48f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0010.npz": "a94e952ddc0c5e0809bfcdf4253823fb308d48de0630227e4cac50e0b09361e4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0012.npz": "f86bf8e9cc28f8fae0d60263da014f88572e23d8b17d067244f8f75774961a44",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0013.npz": "59e7c181b8ee0c5a5a65d36f9666daa21524515e1c54d03362a72be4b6a9006f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0014.npz": "91e2904cfdc7d90a619f360c4d94b8f8b9d8919b20759ffa9c72aec3f1d1f567",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0015.npz": "76f8d5e880eed74fcc071dfc62d04fcb57f7ce7c9dc2855138034e03399ab0a3",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0018.npz": "e3e2dead139603805613611604b35e13d199a4e76183af086d5578b57672bf64",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0019.npz": "05d3d2084fcf07fb48306cb99e5eed05c1be2ed91eb180eda0a9ab3311772993",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_e2e/0020.npz": "809a1ce6e46b76cea9ec3d1ce6686ab21c93477c73341772252d92948e217c62",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/run.json": "c742adea42825ad4da713cdd660b9819709d028f34f5f215fbedb85b9902e86f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0000.npz": "99765a7582af1ccf14f181792ef9ed1c884a577f1b40d17f4cc9ee3a816324d7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0001.npz": "f11e501966610ba70ddadafcb9ddcb4a9167ce5769137806f9e527ba438fe9dc",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0002.npz": "eb12da4ab4e2cf7c99562547ebde289811168fc8755ce99f9cfa686f63cd22f7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0004.npz": "875a07f76c476f2097fbc7c4c215b0a718cc1b885f89088e70c77c0c5b7d2f00",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0005.npz": "b0eca5e000efc2db6af7268424effcbfa91c5acfe7ae95d0ed763ee9edcd8f42",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0006.npz": "6374a6ecbd1a17058aa186f5dcbcfa20da109c5659da734cb50d3eb784597299",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0008.npz": "7b12dae67c6820dea844ff28848adb5a6eb8338234692895bc0f78b578cf974e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0009.npz": "1488e97e9a8b8f7908ff8b0891d598c1a2e5ea5c5b0f7da06914da766b59dbb6",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0010.npz": "4d8a1efcbb9643207b4263ca578a1ed7a2c9e72ad6fbbd4fd9843488ec8a43ee",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0012.npz": "df63935fcc080b6767a5a9fad05de36341ff36d44d9ca518db0a9e7d748d56fd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0013.npz": "8b33247e828da7c82580b8b4e87f37686991c37e4fde2d393efcbcb8f66331a4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0014.npz": "84dbbebc5cde35a01bd926d1879906abceac6cc2aaaaf7db57d451d56d9ffd56",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0015.npz": "2c01bbf9d262db3778f8aa225fcaf97ad51f0f3851abb21d1fb4bbb2331c7040",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0018.npz": "e082d003c3843a238ee8c4f16a109da00b1d8f00acd3b97e416dd89398019484",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0019.npz": "4e00faffdfd24ab5cef3d4a455ea13883187fe359a6b016d4ebe5486f7c6d3e4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f0_b_nms/0020.npz": "967f005a038e95ecb3d2b5b606c1e71e3053c0d69bdcd1a934b350f078bc7ec8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/run.json": "c06701bd8cc8dc7f84e7029a0e739f244707df3ee224f1738b588a5a5111b71f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0000.npz": "40c4a381fc158f539f388d37f7e6e7cec3361fe77ef948f2c817f2af7ca6690c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0001.npz": "b02d3a997879187742353e1a3fd911523ae1cd0a35eac76bbdaeb8994ac02593",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0002.npz": "682d0202246e8e4700404ae71cc69b5376109748b9884e26c02a99921f6697ba",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0004.npz": "744768e95aac4831f8eeb07fea856e20fb1d2802c5214a1bc4c7117a20b024d8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0005.npz": "ca84a54ba5d24b56257681ead73c78ec364aacb11ca82be1a5b6964ad96656f2",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0006.npz": "e39cde67557a747ea1bbd30c734758c2a34d1b44357cb9854cbec29bb3f241dd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0008.npz": "a876afc14e2fa8576e30e5e47f6ae745eb2227b1505a97d7f64759df01076d91",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0009.npz": "0762d2a3c898afc7a754f8484ad39163acfd448a55aecbc699ee1c6c345d1529",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0010.npz": "9e235d475aeb8b2de69e2a0cc87eed886425871652fb522db189f3063c5487bd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0012.npz": "c87a5b19ef82e1166d267f770f93f8d58471844582f33d6cfcb2584b9021fb01",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0013.npz": "aede147b4265bb6a63f424fee4e4998a5e7f42e7ec2dfe45b38dd6678cf4f0d6",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0014.npz": "e51fbfee62a2c943e3833006a902a2632eca459973732c475627222279d88933",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0015.npz": "e192f586fd789ba3068b34e78ef85728c24cd7d046fd2b0338387d6369d352d5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0018.npz": "1f67f10e098b0bd100d1354dd3c278e8471bb32f0079f7e67aa02de6cb0addc3",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0019.npz": "f5dc1578735ec5c0db9dd658cae011333ac329d52e8fda1abf223bc17a62200c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_e2e/0020.npz": "c50258f942b91fba4ecaac3023d6080e4dae4c3add84a733cc99feed7d97b5a7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/run.json": "c4f4d5069f40b16eb56744d51e6e753dcca228f9adf1c9f870aad9ca3f09a165",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0000.npz": "4a8bde8e7aad41494ab0a4badbc2766150fb11e764e905d96ebe917c1dd631a7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0001.npz": "7e9867aac8e7c8724f4836331f6c85e6aaed56b5c31cec48f55dd565a7546dd9",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0002.npz": "0c4ea6ed71b2b00ccb8e4bcefe617e458dcfe333ab7408f7d157cbc67cf6be65",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0004.npz": "f43e167f39edd95543492b2d20f84517fcb4a4d519bbf75d61d6231154fb6895",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0005.npz": "cf3be667812dfd1e809fa7da0efc12161e2cd73d1968d6af3ec421240146921f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0006.npz": "2db2c03cc3d926f2c12c4822645cd379f3326637bbd32ff2ba68d521e94c618f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0008.npz": "534202b9851da5742d2f3a3c3b207a744ba8c2c7668cb7bb6c3a412017259426",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0009.npz": "111cb3885a49dc8036bebfbd7f9998477fb4e3347d40e34adc88f7e72f09bcb1",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0010.npz": "fd83a6a37b9352e7c460a38acdf8edb004c822605a989909a122ce14da87dc07",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0012.npz": "d8d97e890885d0b6d215152b4cc708dbe1c3d42670a6c1c685f57245c9af4345",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0013.npz": "5a1493d50183d24018111ede9976070aadccc9e48b71156bc26d40ca1c727b0d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0014.npz": "5836c16d71d8402093b03822c4e1e10b5072f5718de4d19cd8d7ac4650e858a5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0015.npz": "d54eca358f1a71bcd30de0d0687721d7c4e18e0be0f93fb325fa040b400a6a1e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0018.npz": "debce2ed437aaa25faabc40cfe9258bd55979c6e0842ba330966355f781b80f3",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0019.npz": "cb8b4180cd59ec8306e3f6b2c79d8bc00460fc2c8711a819c513082d7a734d91",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_a_nms/0020.npz": "47324d936e64d857f3f375aae69a87b100b824041df41fc3631111c337f6cae4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/run.json": "e152dae6a94ef826a25c0124e680f208c21bd0ecf463a23adf516d76404d1de0",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0000.npz": "82b8e1b11a8a5be9697d42002981ecbc410ea3b2b238dad6ed4413ecf998461e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0001.npz": "8928cf128a675be32666cb98cb65c7843f94962f52f53df932df057fc51443f4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0002.npz": "15ae6401232928121c9ad76622d06ab04a5b171a0c99e4380517d3012602c2b8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0004.npz": "514788209ad789bacf00b62e882e2b5f4a012c2437d82e83ac49318b5229bc0e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0005.npz": "ef8cf916d0feb97fe17784ed84c8dcfc4376efe973c0f3001160008ea790ad87",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0006.npz": "7c38f692d7666c8dcd24dec130675c9e966b40eb2b722c4bf38214f36c6f7149",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0008.npz": "6bc474fe684d0014f4bff2b8849d1317b6b8bd9fb25ca3ad4391efa18c18e7dd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0009.npz": "a61407f88ca9637c91df2812733c5cf3e07a9e47e0549c518465a7be3f45338c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0010.npz": "8c6c3454556e4b83250b0643fa8b6c1894aa8641b9691625d5347148321f19eb",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0012.npz": "5f946f132b1ef45415dfc2ebae258a4cf891ef8e934381de64a88a7278b18132",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0013.npz": "33b07863133dac6f203c26658b993c4c283bf676d3fe2ce14a0cee65bfb7e043",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0014.npz": "ce4aa4769804dc06aa97b7d4d110b571ccb18be75b8246bda2b1c90ab3197dae",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0015.npz": "75f572bc91ad12c8c755fc0bd0f88d659d22b7702e356065b0215a2617d5b4da",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0018.npz": "1933c13d64bdabe8bd419a51bd789ac5e7ccec0c7944199acfa9afe1f18030ee",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0019.npz": "56e9026cd58bf99f885659e1b6d9a29435fb1a9a3ccc4c24e664a1fb7fdd7205",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_e2e/0020.npz": "6ebc15d43d44cf28107816141120cbc86de894547e28ac20f0479a7bf6969ba3",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/run.json": "b6ef1e7ea474f673deae2a68f832bc1d56a2b49aa596e6484a395702dfb442a7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0000.npz": "593ef08bd9f55496fbf948459fdfe68675d605cc3b785a8aa57aa7250a0d3682",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0001.npz": "e5a60e81cf0bc0b15723ab9cda3b449930b67bcf5a6a724c8c4c3ffa3ced9f6b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0002.npz": "2837d9e55195da5c06caa5706e3ed0ca56784e0648f7ad2f1c1de760bd839c87",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0004.npz": "68295a8da2570effbd321f95a2334021c13b58d5e2b2751e2859f4ec90516b06",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0005.npz": "3fbbf625bbe00011726621a385534557eeee86fe07e5af201049f0762759c2df",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0006.npz": "f16d8a31feea6612ccb3eaba2a22a4d1d42dc08b95f8db3adf0029900d0470ba",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0008.npz": "8aaa3d7255474832a31f2223d67a9ac4214b76862fcf24c6d2a95a21b697ae65",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0009.npz": "31aea6612c484da25886fd826777da1a49edc765e8a0ceb7e86cfe4d6fd426ac",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0010.npz": "0d945270df2f2d249216eb850b2d0358965722107449b07fa05c5b8e285a11b7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0012.npz": "8ee4a7fc08f24cfdf6b5863f23547593d045d3b238f5b842e2e432e11d135f9e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0013.npz": "f87fdfe945229b924911be32442b632aff4aa851cb5ec9571d27c07bff66c871",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0014.npz": "1921bb2fcc3b9c98e9246af6f8cddf47f5f888af66a1709e947ff0c5a197ff09",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0015.npz": "408e4ff1e6e6644aabc38f1f49e3b3c88e4993cd809b73e716d5ddeccbde652b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0018.npz": "f0de986133b85caf11f6294483f5c0e2e78cab864eb67a6b854fb55cae9141c7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0019.npz": "f4d1d86bcea6f61659360bf200f953768dbccf5cdced4fd782d8f826c1b4979a",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f1_b_nms/0020.npz": "d014f383086eb10b16a1f6e471711cbcf312f89e5b07934956b902235e50cd52",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/run.json": "40889a98e7c32b9009d8086798a0d38dfe3df9ac55f36e7b4c66a27f224538a8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0000.npz": "4d506d2b87896ea8dbbc35305c5769b5053baa176d5e4bef40c392c453571631",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0001.npz": "036d68051741c0502ef9e9cf4ce2cbe5b8cb3078ab30fa3e77bc0828e97ab53b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0002.npz": "600932073a89a218e2b0dbdf3d31976d20fccf7c30411f462d99ca991dba26a1",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0004.npz": "ab6697f473f424058d5a97aab29dd9d88afa32cea5787206504a615114379fa7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0005.npz": "fda299b8e6cfc02822f96f4287bbbd21385fa86194132ac69be74c4a3725561f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0006.npz": "74b28d13477bc62cc4d9117abbc7f72c4a00509165612fb90e757d57f3fa636c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0008.npz": "9f8335a0ad83f74d7b9d14b3d431444242b11579888d556fbcc8146b21d1cba3",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0009.npz": "5c4a15ab049c52babfa56880287ca92db78bfc3975d29bde7dfcbf8f93fdbbb7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0010.npz": "91349def7411a5269d2fc6867e0dde11a12cdfd9a3a72702454176e794ad293d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0012.npz": "ec5cfcf27cb9b062d4469aac4b9407b3d4aff7dceef9b6009e8c094f65a6418b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0013.npz": "ef66075784b5a2a50b2c695fc755ebd4babccfa8e3b01934c8208cf0b4e08161",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0014.npz": "48933ff971cd72223a9eb15f7b09343c4dc60bb6cfd8ac22cf1ba6fa6d5d5153",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0015.npz": "6654cb12cc6100f8c393b0355ce0ed935acc62e3f3b170e30a37ce600132c8e7",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0018.npz": "33105e505ef85cee56d38ca4a64d5992ec6b6eb1fbcf627f0d2b86dd6c55c75f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0019.npz": "bd9dca416300bb788eaaa8b4b4c95752ea6068ecb9a6e0f7bbaebc3c0462adc1",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_e2e/0020.npz": "5347ad658f5ec7093a15ea01559d41c73d904771ebfa5e054f1223db597eb6ec",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/run.json": "aeaaca6192eb4ca171eddbe18d5fd6a73cf1dd964cb88ba78d83b718817b318d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0000.npz": "90cb7cd9e5fb377d14ea27476b9a554f6e08603434826aec23a15042a2b00ba5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0001.npz": "b12bda69ec96a59cdd95a00cd475c6ba2f8443bc7ec11b82e3e3343f59f24464",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0002.npz": "1d8edce87fc6925925aa6c236da5a43d4e6fe2d769bffb72406e90376c4f4d50",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0004.npz": "2894d6632be73f52e98b69017976e3f5eabfaaea91401cdf9c2e39f4e7727d67",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0005.npz": "6ce7583e2ac4b0636f3fe96fac12428ebf4ca79479ffc8012ac516a3c777918c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0006.npz": "83aa14f9ac49629480cffabb6b339da67554defc5e8779ed82cd4455c18e4371",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0008.npz": "70e06d5845243f5efd2d41e912ef052f0b49b7a367ccf2a2a1b4959a652b6eb4",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0009.npz": "7bbbea600dbb25840f476758bd2dc35d4bddcbccf05761ba7efb482ec3a99a7d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0010.npz": "e5d85b3010bf6ce4c59b685b5345b3f871af5628921d65c2879def62be4284a5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0012.npz": "8235501e0e0abbe1d6a2d029c268fa8b25218dfc803a66fb02b4e9150ac310a6",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0013.npz": "4ee064561f033453ff1610ca3393b42aeab2947f871314e83b378d3d4ffb6f0f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0014.npz": "36721de721c436af7186e2f86bed3ebd5ca325412aca18b81938a906c82fe06d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0015.npz": "9894e7d2ffc673436e6170c9e4a1c8818760d67d63c428e06afc0e05415b1aab",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0018.npz": "bc3c2f062d41b8210ebd32bdc5d369868e0f480900c6268ed5b3ee10ea959aa5",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0019.npz": "be356d8af153276828ae901e5fc1835997c4b6d7c33b74ce7961b14207b66205",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_a_nms/0020.npz": "6624fb1646b29d38b8bf632dcd973ee3c271a569ae3fcb33073937261e540418",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/run.json": "dd25328e65240c711d6d8f6c16567a709eb751db0ec0a44b5222731174c28e4b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0000.npz": "b719f16a0a6ba5b0d233bc54a3c82400bc98c0c69800d4807f6da322955469c8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0001.npz": "e144168294b5bf63b2ace991fec0d3b0163a9460d95bf755f700aef9899a033c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0002.npz": "c8775bb3af331674c9c41db7977b3f1d50bfd5c6233936a1e5b6c46192d4de68",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0004.npz": "210e436f6deb6cbe678b72b7d7940514f467e9293cfd0cbcd1a61039704089b8",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0005.npz": "4b74fb570a4a5c64afacbbc055b29dce972e261715766fcf93fd9f68575a2a41",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0006.npz": "f56404cf5f21a6ab945754676d5c22bff2cf8699edf33360a0ca7496f53ea4e6",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0008.npz": "f33bfbfcde3a68d46de45641f2f6429c98fc3619c45bf2782a690bf2fd7d96cd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0009.npz": "26720f8879032bd5b4cc713f3b3a4b723b8c38eec80a28a7c65226b27b8a874e",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0010.npz": "1ada5ef61a7a4900f47aa9c69466061fc00bad697987f519976a2c03529f5580",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0012.npz": "73f02f740acedde75a2e08904a263984b8ae059d89fc79417c999b8f2a8c8d69",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0013.npz": "267845250534fa0ef7618b6320a3aa10f9bb5b7869a1ee1b57cf6ebd08dc1ea2",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0014.npz": "83aebf0030e55b969562e9fe236609f97f23c86744d3237e3efe1a6bb6c06f1c",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0015.npz": "5cc6f0d1762ccd55963f774b381ce6c17fea552e2a5e49bc63df6d2f53faa4cd",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0018.npz": "70c49d5f07336efecb9299aad83f5747407c09acc1ae94fbfb9ce598fcccb44d",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0019.npz": "bd8d057326f3351bc1472692e0e27434738368ce2ec2fb0c54f84610b70b065f",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_e2e/0020.npz": "8113b1e0920e4f8394f0d90663a5891710803cf07cbc57ddd15a6e02c9dcf844",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/run.json": "531c1c7cac95e9ed01f5b344025ea65cbe811ee440a52ffadd741b9130f52893",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0000.npz": "79eac92a5280aa3a21d6420e56a8b09dfacaf95f8e2491f7720e1d55ecabdddf",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0001.npz": "387bfaae838b11f63adfe74138f367716c1487afc9a2a2a69ebe6cd008dfb765",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0002.npz": "f091c35085a3b2431a49cb80c0c0ca1841bfa127746fad25c5a0a46c3779cdff",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0004.npz": "7bd2e0fff98f96dde571d4e27970be9d1ce8548420adf187c284207d62fac36b",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0005.npz": "c09718cb0234c701975ac384bbf4e4553879245a1c5f1dc71c743d43fa9cf978",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0006.npz": "9f4fff98b4a439f57f42eb563d6af3fe7ae5982d108d04bccfa2e298691c4e44",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0008.npz": "6af7387f3adb28e9dd344a9450908313384d4cbdbb6f2e915b78c767917084cc",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0009.npz": "0a895f5442241c9141e775b73ae8654a9d91672da1d4aa6caa1e2493a042ca60",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0010.npz": "36f4ffb4fb0acf28e45b40d17ec216a48e80346627d519e8e56b41e897e9f491",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0012.npz": "5e945c0f010a56a780da660c00a4c6cc5dc6e6fa6f1c626530eb727f90aa3521",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0013.npz": "d5ff8b01cd7322f5a6fe563e10d5ee5be4ea1f0001bafc7610a2265fdc8427cb",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0014.npz": "fb914b2decffe3e71fa03a74498ba9ed8ff66939fa2bd92f303532b513ff5629",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0015.npz": "d1df5bb1bd7b0276ce7e67414cb022a588d716c6cc2feeab390fdec8de205014",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0018.npz": "264726b79cbb817e120021823599eed30d9334feb669038422778ad242dd3364",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0019.npz": "98f6bd96193bccfd20c1df704d376ddd3c991562acbc14c1eec237ad884ecb45",
+   "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/f2_b_nms/0020.npz": "f229c24ae8080535338cb302aefc1eab0b1da3a3b397e6638cee6d4e2d97734e"
+  },
+  "folds": [
+   {
+    "test": [
+     "0001",
+     "0004",
+     "0006",
+     "0010",
+     "0014",
+     "0015"
+    ],
+    "val": [
+     "0009",
+     "0013",
+     "0018"
+    ],
+    "train": [
+     "0000",
+     "0002",
+     "0005",
+     "0008",
+     "0012",
+     "0019",
+     "0020"
+    ]
+   },
+   {
+    "test": [
+     "0005",
+     "0019",
+     "0020"
+    ],
+    "val": [
+     "0000",
+     "0002",
+     "0004",
+     "0010",
+     "0012",
+     "0014"
+    ],
+    "train": [
+     "0001",
+     "0006",
+     "0008",
+     "0009",
+     "0013",
+     "0015",
+     "0018"
+    ]
+   },
+   {
+    "test": [
+     "0000",
+     "0002",
+     "0008",
+     "0009",
+     "0012",
+     "0013",
+     "0018"
+    ],
+    "val": [
+     "0001",
+     "0010",
+     "0014",
+     "0015"
+    ],
+    "train": [
+     "0004",
+     "0005",
+     "0006",
+     "0019",
+     "0020"
+    ]
+   }
+  ],
+  "epochs": 150,
+  "bootstrap_samples": 2000,
+  "python": "3.12.14 (main, Sep  2 2026, 23:27:36) [GCC 15.3.0]",
+  "environment": {
+   "numpy": "2.5.3",
+   "torch": "2.13.0",
+   "ultralytics": "8.4.163"
+  },
+  "protocol": "development only; filter chosen on each model's validation predictions; automatic IoU tracks"
+ },
+ "timing_hardware_environment": {
+  "commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+  "kernel_version": 8,
+  "calibrations": 3,
+  "timings": {
+   "coco_nms": {
+    "total_ms": [
+     28.329379000012977,
+     28.240945999982614,
+     28.41657999999825
+    ],
+    "fps": [
+     34.80644718540369,
+     35.18115280723174,
+     34.653697031088335
+    ]
+   },
+   "coco_nms_pipelined": {
+    "total_ms": [
+     15.187446499965063,
+     15.119396212554648,
+     15.243370999996841
+    ],
+    "fps": [
+     63.83124689168534,
+     66.92558064920564,
+     64.44885863031601
+    ]
+   },
+   "finetuned_nms": {
+    "total_ms": [
+     27.32779850003908,
+     27.24761681255501,
+     27.429112000049827
+    ],
+    "fps": [
+     36.104343750025684,
+     36.284481942204124,
+     36.40921251114413
+    ]
+   },
+   "finetuned_nms_pipelined": {
+    "total_ms": [
+     14.670286500006569,
+     14.551606499981062,
+     14.754767874939034
+    ],
+    "fps": [
+     68.21508452356491,
+     67.54446506339544,
+     67.00225264543785
+    ]
+   },
+   "finetuned_e2e": {
+    "total_ms": [
+     26.88224500002434,
+     26.788241000076596,
+     26.930767524956423
+    ],
+    "fps": [
+     37.19807819476839,
+     36.5293587245711,
+     36.66044879996426
+    ]
+   },
+   "finetuned_e2e_pipelined": {
+    "total_ms": [
+     14.334782999981144,
+     14.244520700009389,
+     14.409133500066673
+    ],
+    "fps": [
+     69.73022040395041,
+     67.31157964418499,
+     70.28788034651963
+    ]
+   }
+  },
+  "target_t4_measured": true,
+  "hardware": {
+   "cpu": "x86_64",
+   "cpu_affinity": 4,
+   "torch_cuda_build": "12.8",
+   "gpus": [
+    {
+     "name": "Tesla T4",
+     "uuid": "29896d10-5034-a17a-4cb6-4f4c51e297e2"
+    }
+   ]
+  },
+  "versions": {
+   "numpy": "2.0.2",
+   "torch": "2.10.0+cu128",
+   "ultralytics": "8.4.163"
+  },
+  "held_out_test_evaluated": false,
+  "log_anomalies": 2,
+  "kernel_seconds": 928.1283183097839
+ },
+ "limitations": [
+  "driver paths identify the original workspace; adapt paths to reproduce elsewhere",
+  "large model/prediction artifacts remain in Kaggle output and local runs; no new public release is claimed"
+ ],
+ "files": {
+  "summary.json": "236a5c95f21f062480cfed460e9a5878bfec666add7a5161495e84512c237c80",
+  "timing-verification.json": "32b9104e1c365eba04cf10ec3f2d86c15ad1694e3e7fb5d011540e92cb9dc13c",
+  "final-manifest.json": "0ebf41333b54eea15e8f866b8b20d30031644880b8beb1d230f2e189cdc4c88d",
+  "tables.md": "25762c6f6134666ab2a5ddd15002c5f9075079429f68616df902712e4d458765",
+  "freeze.json": "5050fcc1463957e4c152bf4757266f7a5ba39b22b72830e8a6421b7080f11ad1",
+  "development-verification.json": "6b7b876f635bf13d7dea7cadbfef20fa591fe23f1d106b7185e91dc5a52e2586",
+  "drivers/prepare_report.py": "24d5076be03195342583aa3f5dd703d572b8fa280420c77861055cb99b8ca401",
+  "drivers/evaluate_final.py": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314"
+ },
+ "training_environment_log": [
+  "torch 2.11.0+cu128 | GPUs: ['Tesla T4', 'Tesla T4']"
+ ],
+ "software_test_scope": "Owner confirmed software-test TEST fixtures are allowed; pipeline fitting/selection remain development-only.",
+ "report_checks": {
+  "cpu_tests": 83,
+  "cpu_seconds": 86.07,
+  "local_readme_check": "passed",
+  "remote_ci": "verify for the publishing commit"
+ }
+}

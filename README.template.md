@@ -6,257 +6,207 @@
 [![Python](https://img.shields.io/badge/PYTHON-3.12-A19654?style=for-the-badge)](./pixi.toml)
 [![License](https://img.shields.io/badge/LICENSE-AGPL--3.0-6B7F4E?style=for-the-badge)](./LICENSE)
 
-**Detect cars and pedestrians in KITTI video with YOLO26n, estimate how far away they are from a single
-camera, and measure what each stage of the pipeline costs on a Kaggle T4.**
+**Detect obstacles in KITTI video, estimate distance from one camera, track their closing motion,
+and measure the complete pipeline on a T4.**
 
 </div>
 
-<!-- README.md is generated from README.template.md and results/ by `python -m monodist.report --write`;
-     CI fails when they disagree. Edit the template, never README.md. -->
+<!-- Generated from this template and results/rebuild/ by python -m monodist.report --write. -->
 
 ---
 
-## Result in one paragraph
+## Result
 
-Over a three-fold cross-validation that tests every one of the 21 labeled KITTI sequences once, a
-5k-parameter MLP that reads only the detected box estimates distance with a **mean relative error of
-{coco.mlp.ci}** (median {coco.mlp.median}), using YOLO26n with its COCO weights and no detector training at
-all. The textbook pinhole formula $Z = fH/h$ gets {coco.size.mean} and the flat-road formula
-{coco.ground.mean}. Fine-tuning the detector on KITTI raises mAP50-95 from {coco.map} ± {coco.map_sd} to
-**{finetuned_nms.map} ± {finetuned_nms.map_sd}**, but it does not make the distances better
-({finetuned_nms.mlp.ci}; the same {finetuned_nms.mlp.track} as COCO when every object counts once). On the
-T4, decoding the PNG costs more than running the network; TensorRT fp16 cuts inference from
-{lat.ft_1280_nms.inference} to {lat.ft_1280_nms_trt16.inference} ms at the same accuracy, and decoding the
-next frame on a worker thread takes the fine-tuned detector with NMS to **{lat.ft_1280_nms_trt16_pipelined.fps}
-frames per second**.
+The fixed fine-tuned NMS pipeline reaches **{test.nms.map} five-class AP50–95** on the held-out sequences.
+Its saved distance ensemble has **{test.nms.distance} mean depth AbsRel** on correctly matched detections
+at least 2 m away. A causal Kalman filter reduces speed MAE from **{test.nms.speed.raw} to
+{test.nms.speed.filtered} m/s** on matched observations with track history and a valid reference speed.
+These populations differ; missed objects and false-positive distances are not included in the distance error.
+
+On a Tesla T4, the same saved ensemble, thresholds, tracker and TTC path takes **{lat.nms.serial} ms/frame**
+in serial processing. Overlapping the next PNG decode with current-frame processing gives **{lat.nms.fps} FPS**.
+The latter is throughput, not capture-to-output latency.
 
 ---
 
-## What is compared
+## System
 
-| Axis | Options |
+`image → YOLO26n boxes/classes → saved distance ensemble → depth and range → IoU tracker → Kalman filter → TTC`
+
+| Component | Contract |
 |---|---|
-| Detector | YOLO26n with its COCO weights (never trained); YOLO26n fine-tuned on KITTI, per fold |
-| Fine-tuning configuration, chosen per fold on val | a: defaults · b: lower learning rate · c: Van and Cyclist labeled as their own classes · d: c with the DontCare regions painted gray |
-| YOLO26 head | one-to-many head followed by NMS; NMS-free (one-to-one) head |
-| Distance from a box | **known size** $Z = fH/h$ ($H$ = mean class height); **ground plane** $Z = f\,h_\mathrm{cam}/(v_2 - c_y)$ (bottom edge on a flat road); **MLP** trained on the detector's own boxes |
-| Speed levers | fp16, TensorRT fp16, CUDA graphs, input 1280 vs 640, decoding the next frame on a worker thread |
+| Detector | YOLO26n; COCO baseline or full KITTI fine-tune; NMS and NMS-free heads |
+| Classes | Car, Van, LargeVehicle (Truck/Tram), Pedestrian (Pedestrian/Person), Cyclist |
+| Reporting groups | Vehicle, Person, Cyclist; also class-agnostic detection |
+| Distance | Five MLPs trained from scratch; 11 box/class features, hidden layers 64/64, averaged in log depth |
+| Geometry baselines | Known size, $Z = fH/h$; ground plane, $Z = f h_\mathrm{cam}/(v_2-c_y)$, with known-size fallback |
+| Temporal output | Automatic same-class IoU association; causal constant-velocity Kalman filter on depth and depth rate |
+| TTC | Optical-axis depth divided by closing speed; infinite when not approaching |
+
+Depth is camera-2 optical-axis Z. Range is Euclidean distance to the labeled 3D box center; predictions use
+estimated Z along the detected box-center ray. Reset tracker state between sequences. KITTI frames are 0.1 s apart.
 
 ---
 
-## Data and protocol
+## Data and evaluation protocol
 
-- **KITTI tracking**, the 21 labeled sequences (8,008 frames), classes Car and Pedestrian; the official test
-  sequences have no public labels. Ground truth is the depth z of the LiDAR-based 3D box in camera 2, with
-  the calibration of each sequence (four calibrations, $f$ = 707 to 722 px).
-- **Three-fold cross-validation by sequence** (`kitti.FOLDS`): each sequence is test exactly once; the other
-  sequences of a fold split about 70/30 into train and val. Folds balance cars (instances and tracks) and
-  pedestrian tracks; pedestrian instances cannot be balanced, since sequence 0019 alone holds 53% of them.
-- **Per fold**: configurations a-d are fine-tuned on train (epoch chosen by Ultralytics on val; for c and d
-  its val score also averages the Van and Cyclist classes) and the one with the best val mAP50-95 on Car and
-  Pedestrian, scored with the project's own matcher, is kept ({chosen}). The known-size
-  heights and the camera height come from the train labels; the MLP trains on the detector's boxes on the
-  train sequences (epochs by leave-one-sequence-out, five seeds averaged); the score threshold of each class
-  is the F1-best one on val. Nothing is chosen on test.
-- **Matching**: greedy by score, $\mathrm{IoU} \ge 0.5$, per class; as in the KITTI devkit a car detection on a Van and a
-  pedestrian detection on a sitting Person count as neither hit nor false alarm, and detections inside
-  DontCare regions are ignored. mAP is COCO-style (101-point, $\mathrm{IoU} = 0.50, 0.55, \dots, 0.95$), per fold, reported as mean ±
-  standard deviation over the three folds.
-- **Distance metric**: $\mathrm{AbsRel} = \lvert \hat Z - Z \rvert / Z$ on matched test objects farther than 2 m, pooled over the
-  folds. Intervals are **cluster bootstrap over tracks**: a car seen in 300 frames is one sample, not 300.
-  Next to the usual per-frame mean, the per-object mean gives every tracked object the same weight.
+- **KITTI tracking labeled sequences**, partitioned by complete sequence. Development uses 16 sequences;
+  final TEST is **0003, 0007, 0011, 0016, 0017**. This is a local split of labeled data, not a submission to the
+  official hidden-label KITTI tracking benchmark.
+- **Three development folds** select detector configuration using validation AP. Final configuration is
+  **{chosen}**, selected by mean validation AP across folds. The NMS-free comparison uses the same
+  selected detector checkpoint. The final fine-tune uses the predefined train/validation split.
+- **Distance fitting** uses detector boxes on training sequences. MLP epochs are chosen by grouped inner
+  holdouts of those training sequences. Per-class confidence maximizes validation F1. Kalman settings use
+  development validation predictions. Final TEST uses the exact saved ensembles/settings measured on T4.
+  No final TEST metric selects a configuration or fits a model. Software tests may use TEST label fixtures.
+- **Detection matching** is score-ordered greedy matching; IoU thresholds 0.50 through 0.95, 101-point AP,
+  and Misc/DontCare ignore regions. This custom protocol is not the complete official KITTI difficulty protocol.
+- **Distance** is scored on correctly classified matches at IoU ≥ 0.5 and Z ≥ 2 m. Read the sample counts
+  and recall tables alongside error. Mean depth and range AbsRel use track-cluster bootstrap 95% intervals
+  with 2,000 resamples. The median is descriptive. Tracks are identified jointly by sequence and object id.
+- **Development AP** is mean ± sample standard deviation across folds; distance rows are pooled without
+  duplicate object/frame keys. TEST AP is one fixed-split result. Comparisons between detectors use common
+  matched object/frame keys and do not measure overall detection coverage.
+- **Temporal scoring** matches kept detections class-agnostically at IoU ≥ 0.5. All kept predictions,
+  including false positives and ignored detections, enter tracking before labels are attached for scoring.
+  Raw and filtered speed use the same eligible matched rows with history. Reference speed is a centered
+  five-frame label slope; future labels enter only that reference. TTC scoring uses reference TTC below 10 s.
 
----
+### Development selection
 
-## Results
-
-All tables, generated from `results/`, are also in [results/summary.md](results/summary.md).
-
-### Choice of the fine-tuning configuration (val mAP50-95 per fold; bold = kept)
+Configuration a uses defaults; b lowers the learning rate. Every configuration uses the same five classes.
 
 {table:selection}
 
-Labeling vans and cyclists, with or without graying DontCare regions, never won a fold (c came second in
-fold 1); a lower learning rate won two folds by about a point over the defaults.
+---
 
-### Detection (test, per fold, mean ± standard deviation over folds)
+## Detection
+
+COCO has no direct Van/Cyclist predictions in this mapping; five-class AP includes those missed classes.
+Grouped and class-agnostic AP therefore answer different questions from five-class AP.
 
 {table:detection}
 
-### Distance error on the test objects of all folds
+## Distance
+
+Each detector has its own population of correctly matched objects. The pooled means alone are not a paired
+comparison between detectors. Range and depth have different geometric targets.
 
 {table:distance}
 
-Test set: {coco.n} object-frames from {coco.tracks} tracks for the COCO detector.
+### Final TEST: MLP by class
 
-### Recall by distance at the operating point ($\mathrm{IoU} \ge 0.5$)
+A dash means there were no eligible matches, not zero error.
+
+{table:classes}
+
+### Paired detector comparison
+
+Difference is fine-tuned minus COCO mean depth AbsRel on common matches. Positive values favor COCO.
+Intervals resample complete ground-truth tracks; an interval crossing zero does not establish a mean difference.
+
+{table:paired}
+
+### Final TEST recall by true depth
+
+Cells show recall and the number of labeled object-frames. Recall includes missed objects, which the
+matched-distance table excludes.
 
 {table:recall}
 
-### Latency
+## Tracking, speed and TTC
 
-One Kaggle session (T4, 4 vCPU Xeon), one frame at a time, 300 frames of sequence 0007 x 3 rounds after 30
-warm-up frames; medians in ms. "Pipelined" decodes the next frame on a worker thread while the GPU works on
-the current one: its FPS is throughput, the latency of one frame stays about the serial total. FPS is the
-mean of the three rounds (the session's first configuration ran its first round at 24 FPS, a cold start;
-every other round is within 5 FPS of its configuration's mean). The accuracy
-column is mAP50-95 of the same weights on the earlier fixed split (see `results/eval/`).
+The filter improves the measured speed/TTC outcomes, while persistent per-object distance bias remains.
+The identity-continuity diagnostics in the recorded outputs are not official MOT/HOTA/MOTA scores.
 
-| Configuration | mAP50-95 | decode | preprocess | inference | postprocess | total, serial | FPS serial | FPS pipelined |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| COCO weights, PyTorch fp32, 1280 | {fixed.coco_1280.map} | {lat.coco_1280.decode} | {lat.coco_1280.preprocess} | {lat.coco_1280.inference} | {lat.coco_1280.postprocess} | {lat.coco_1280.total} | {lat.coco_1280.fps} | |
-| fine-tuned, PyTorch fp32, 1280 | {fixed.ft_1280.map} | {lat.ft_1280.decode} | {lat.ft_1280.preprocess} | {lat.ft_1280.inference} | {lat.ft_1280.postprocess} | {lat.ft_1280.total} | {lat.ft_1280.fps} | {lat.ft_1280_pipelined.fps} |
-| fine-tuned, PyTorch fp16, 1280 | {fixed.ft_1280_fp16.map} | {lat.ft_1280_fp16.decode} | {lat.ft_1280_fp16.preprocess} | {lat.ft_1280_fp16.inference} | {lat.ft_1280_fp16.postprocess} | {lat.ft_1280_fp16.total} | {lat.ft_1280_fp16.fps} | |
-| fine-tuned, torch.compile (CUDA graphs), 1280 | | {lat.ft_1280_cg.decode} | {lat.ft_1280_cg.preprocess} | {lat.ft_1280_cg.inference} | {lat.ft_1280_cg.postprocess} | {lat.ft_1280_cg.total} | {lat.ft_1280_cg.fps} | |
-| fine-tuned + NMS, PyTorch fp32, 1280 | {fixed.ft_1280_nms.map} | {lat.ft_1280_nms.decode} | {lat.ft_1280_nms.preprocess} | {lat.ft_1280_nms.inference} | {lat.ft_1280_nms.postprocess} | {lat.ft_1280_nms.total} | {lat.ft_1280_nms.fps} | {lat.ft_1280_nms_pipelined.fps} |
-| fine-tuned, TensorRT fp16, 1280 | {fixed.ft_1280_trt16.map} | {lat.ft_1280_trt16.decode} | {lat.ft_1280_trt16.preprocess} | {lat.ft_1280_trt16.inference} | {lat.ft_1280_trt16.postprocess} | {lat.ft_1280_trt16.total} | {lat.ft_1280_trt16.fps} | {lat.ft_1280_trt16_pipelined.fps} |
-| **fine-tuned + NMS, TensorRT fp16, 1280** | **{fixed.ft_1280_nms_trt16.map}** | {lat.ft_1280_nms_trt16.decode} | {lat.ft_1280_nms_trt16.preprocess} | {lat.ft_1280_nms_trt16.inference} | {lat.ft_1280_nms_trt16.postprocess} | {lat.ft_1280_nms_trt16.total} | {lat.ft_1280_nms_trt16.fps} | **{lat.ft_1280_nms_trt16_pipelined.fps}** |
-| fine-tuned, PyTorch fp32, 640 | {fixed.ft_640.map} | {lat.ft_640.decode} | {lat.ft_640.preprocess} | {lat.ft_640.inference} | {lat.ft_640.postprocess} | {lat.ft_640.total} | {lat.ft_640.fps} | |
-| fine-tuned, TensorRT fp16, 640 | {fixed.ft_640_trt16.map} | {lat.ft_640_trt16.decode} | {lat.ft_640_trt16.preprocess} | {lat.ft_640_trt16.inference} | {lat.ft_640_trt16.postprocess} | {lat.ft_640_trt16.total} | {lat.ft_640_trt16.fps} | {lat.ft_640_trt16_pipelined.fps} |
+{table:temporal}
 
----
+## T4 timing
 
-## Findings
+One session, sequential configurations on GPU 0, with four CPU-affinity slots; sequence 0019, 300 PNGs,
+three rounds after 30 warm-up images, batch 1, input 1280, FP32 PyTorch. All configurations use the same T4
+UUID, environment and image hashes. The second provisioned T4 is idle under the approved controlled-timing
+protocol. Final detector configuration and saved distance-model hashes match the TEST quality evaluation.
 
-1. **The box already contains most of the distance.** The MLP beats both formulas for both classes: for
-   cars at 10-20 m it scores {coco.mlp.Car.10-20} against {coco.size.Car.10-20} for the known-size formula,
-   and for cars closer than 10 m, most of them cut by the image border, {coco.mlp.Car.0-10} against
-   {coco.size.Car.0-10}.
-2. **The known-size formula has a floor of about 10% on cars, even with perfect boxes.** KITTI measures depth
-   to the center of the car, but a 2D box encloses the whole car: its bottom edge comes from the nearest face
-   and its top edge from the far end of the roof. For a car seen from behind, with the ground $y$ meters below
-   the camera, $\hat Z / z \approx 1 / \left(1 + \frac{l}{2z} \cdot \frac{2y - H}{H}\right)$, about 10% low at 25 m for a 4.3 m car,
-   which matches the labels (study notes, notebook 01). On the labeled boxes the formula scores
-   {coco.floor.size.Car.whole} on untruncated cars. A detector whose boxes look *more* like the labels makes
-   it *worse*: {finetuned_nms.size.Car.whole} after fine-tuning against {coco.size.Car.whole} with the COCO
-   weights.
-3. **The flat-road formula does not hold on KITTI.** The labeled ground points of cars lie between 1.38 and
-   1.80 m below the camera (interquartile range), because of slopes and pitch; pedestrians stand about 16 cm
-   higher, on the pavement; and half a degree of pitch moves the horizon by 6 px, a 23% error at 40 m.
-4. **Fine-tuning helps detection, not distance.** On the {compare.finetuned_nms.n} test object-frames both
-   detectors found, the fine-tuned MLP differs by {compare.finetuned_nms.mlp} points of mean AbsRel; one car
-   of sequence 0015 that stays 2-5 m from the camera, cut by the border, accounts for most of it, and the
-   medians ({coco.mlp.median}, {finetuned_nms.mlp.median}) and per-object means ({coco.mlp.track},
-   {finetuned_nms.mlp.track}) agree.
-5. **After fine-tuning, YOLO26's NMS-free head lags behind its NMS head** ({finetuned_e2e.map} vs
-   {finetuned_nms.map}), while with the COCO weights the two are equal on the fixed split
-   ({fixed.coco_1280.map} vs {fixed.coco_1280_nms.map}). *Hypothesis tested and rejected:* the lag is not
-   caused by choosing the epoch with the NMS head. Configuration e chose the epoch with the NMS-free head;
-   on fold 0 it picked the same epoch ({hyp.e.epoch}), and the NMS-free head stays behind at every epoch of
-   training (test {hyp.e.test_e2e} vs {hyp.e.test_nms}).
-6. **Eager PyTorch is partly limited by kernel launches.** One forward pass launches
-   {profile.nms.fp32.kernels_per_forward} CUDA kernels in fp32 ({profile.nms.fp16.kernels_per_forward} in
-   fp16). Replaying them as one CUDA graph cuts the forward pass from {profile.nms.fp32.eager_wall_ms} to
-   {profile.nms.fp32.graph_wall_ms} ms in fp32 and from {profile.nms.fp16.eager_wall_ms} to
-   {profile.nms.fp16.graph_wall_ms} ms in fp16: the time eager PyTorch loses between kernels is what hides
-   fp16's speed. Ultralytics' `compile="reduce-overhead"` did not capture that gain
-   ({lat.ft_1280_cg.inference} ms), so the practical lever remains TensorRT.
-7. **Far objects are the weak point.** Beyond 40 m the COCO model finds {coco.recall.Car.40} of the cars and
-   {coco.recall.Pedestrian.40} of the {coco.recall.Pedestrian.total40} pedestrian object-frames; input 640
-   instead of 1280 loses more far objects (fixed split).
+Stage values are per-frame medians. Total also includes file reads, preprocessing, postprocessing and Python
+overhead, so it is not the sum of the displayed subset. FPS is the median of three round wall-clock rates,
+including round setup/drain. Repeated images can benefit from storage caching. Decode-overlapped FPS measures
+processing cadence; it does not establish per-image capture latency or arbitrary-camera real-time behavior.
+
+{table:latency}
 
 ---
 
-## Checks
+## Relation to published work
 
-- **AP implementation**: on the fixed split's val sequences, without the ignore rules and with NMS, it gives
-  mAP50-95 0.466 (Car 0.548, Pedestrian 0.384) against 0.465 (0.552, 0.378) from Ultralytics' own
-  validation of the same weights.
-- **Labels**: the 3D boxes projected with P2 overlap the 2D labels at a median IoU of 0.97.
-- **Formulas**: both invert the pinhole projection exactly on synthetic boxes (unit tests).
-- **Reproducibility**: GPU and CPU detections agree on 46,230 of 46,231 boxes; configuration e, trained with
-  the same seed and stopped at the same epoch as a, reproduced a's detections byte for byte; rerunning the
-  evaluation reproduces its JSON byte for byte.
-- **Precision**: PyTorch fp32, fp16 and TensorRT fp16 give the same mAP50-95 to three decimals.
-- **Every number in this README** is filled in from `results/` by `monodist/report.py`, and CI checks it.
+| Reference | Connection | Protocol difference |
+|---|---|---|
+| [MonoLoco, Bertoni et al., ICCV 2019](https://openaccess.thecvf.com/content_ICCV_2019/html/Bertoni_MonoLoco_Monocular_3D_Pedestrian_Localization_and_Uncertainty_Estimation_ICCV_2019_paper.html) | Monocular pedestrian localization and uncertainty from 2D human pose | This project uses boxes/classes, five obstacle classes and a tracking-sequence split; its AbsRel is not a comparable leaderboard score |
+| [KITTI tracking benchmark](https://www.cvlibs.net/datasets/kitti/eval_tracking.php) | Driving sequences and labeled object identities | This project reports custom detection, distance and optical-axis temporal metrics; it is not an official tracking submission |
+| [Ultralytics YOLO26](https://docs.ultralytics.com/models/yolo26/) | Detector family with NMS-free inference support | Published detector timings exclude this project's saved ensemble, image decoding, tracker and TTC; compare the same workload before comparing speed |
 
----
+No numerical superiority over these systems is claimed under unmatched protocols.
 
-## Limitations
+## Limits
 
-- One fine-tuning run per fold and configuration; the spread over folds mixes data and seed variation.
-- Pedestrians beyond 40 m are almost absent from KITTI tracking ({coco.recall.Pedestrian.total40}
-  object-frames), and no detector finds them.
-- The mean AbsRel is sensitive to a few objects seen for hundreds of frames; the per-object mean and the
-  median are reported next to it.
-- Latency is for one frame at a time on a Kaggle T4 with 4 CPU cores; PNG decoding depends on the CPU. The
-  latency session used the fixed-split fine-tuned weights (same architecture as the fold models).
-- GPU code paths (detection, fine-tuning, latency) are tested by running them on Kaggle, not by CI.
-
----
-
-## Mistakes caught while doing this
-
-Each one was found by checking a number that looked too good or too odd, and fixed before the results above.
-
-1. **The distance MLP first trained on the val sequences**, where 91% of the pedestrians came from one
-   sequence; it was worse than the plain formula on pedestrians. It now trains on the train sequences.
-2. **Both TensorRT engines were written to the same file**, so a "1280" timing measured the 640 engine; the
-   latency tool now refuses to run an engine at a shape other than the one asked for.
-3. **A fixed score threshold of 0.25** favored whichever detector outputs higher scores; each detector now
-   uses its F1-best threshold from val.
-4. **One MLP seed** moved the error by about a point; the prediction is now the average of five seeds.
-5. **Objects closer than 2 m** (all truncated) made AbsRel explode; they are excluded and counted.
-6. **Latency from different Kaggle sessions** is not comparable; all timings are from one session.
-7. **A test set of 8 sequences** held only 30 pedestrian tracks and one run of fine-tuning; the
-   cross-validation now tests all 21 sequences and every configuration three times.
+- One detector training run per configuration/fold; fold spread does not isolate seed variation.
+- Distance errors exclude misses and false-positive distances. Van/Cyclist coverage differs strongly from COCO.
+- Long tracks influence frame-weighted means. Track resampling does not model every dependence across
+  objects or across the fold training runs.
+- Distance fitting sees training-image detector boxes; their distribution can differ from unseen-image boxes.
+  The effect on generalization was not isolated. Near/truncated objects remain a weakness in development.
+- Camera features use one focal length; the ground-plane baseline assumes a level camera and flat road.
+  Arbitrary camera geometry and road pitch are not verified.
+- TTC describes optical-axis closing motion, not whether two trajectories will collide. No braking controller,
+  closed-loop simulation, safety guarantee or demo is evaluated here.
+- Training with RAM caching emitted nondeterminism warnings. Source/input hashes do not imply bit-identical
+  retraining. TensorRT, FP16 and compiled variants are not part of the rebuilt timing matrix.
 
 ---
 
-## Reproduce
+## Provenance and reproduction
+
+Measurement library source is fixed at **`{source}`**. Training version 4, development analysis and timing
+version 8 use that source. Final scoring calls those frozen library functions with the saved timed models;
+its orchestration driver is recorded separately by SHA-256. Report-rendering changes do not refit models.
+
+[results/rebuild/MANIFEST.json](results/rebuild/MANIFEST.json) identifies source/input/model hashes,
+environments, hardware, run versions, fixed choices and packaged files. The archived scoring/packaging drivers
+record their original workspace paths; adapt the directory constants and use fresh output folders to reproduce
+elsewhere. Large weights, detections and per-frame intermediates remain in the original Kaggle outputs and
+local runs; this update does not claim a new public artifact release. A fresh clone can verify the report,
+but full model reproduction needs those artifacts or a new training/detection run.
 
 ```bash
-pixi install && pixi run test               # CPU tests, KITTI labels included in the repository
+pixi run test
+pixi run python -m monodist.report --check
+pixi run python -m monodist.report --summary
 
-# Kaggle (GPU T4, dataset leducnhuan/kitti-tracking), code pinned to the pushed HEAD:
-python kaggle/queue.py --commit $(git rev-parse HEAD)   # 13 fine-tuning jobs, two at a time; measured: 9.6 GPU-hours in total, ~45 min each
-for j in runs/kaggle/cv/f?-?; do                        # queue.py downloads each job's output there
-  cp -r $j/det/* results/cv/det/ && cp $j/runs/*/results.csv results/cv/train/$(basename $j).csv
-done
-
-# the fixed-split experiments: fine-tuning (its weights are the release fixed-split-weights), then detection of
-# every configuration and the latency session, which download those released weights
-python kaggle/push.py finetune --mode full
-python kaggle/push.py eval --mode full                  # or --mode latency for the timings only
-kaggle kernels output spritker/monodist-eval -p runs/kaggle/eval
-cp -r runs/kaggle/eval/det/* results/det/ && cp runs/kaggle/eval/latency/*.json results/latency/
-
-# CPU only, from the detections:
-python -m monodist.crossval --root data/kitti_tracking --runs results/cv/det --out results/cv
-python -m monodist.evaluate --root data/kitti_tracking --det results/det/*    # -> results/eval
-python -m monodist.report --write
+# Build the pinned kernels without spending GPU quota:
+python kaggle/push.py train --mode full --commit {source} --build-only
+python kaggle/push.py eval --mode full --commit {source} --set DEADLINE=3600 --build-only
 ```
 
-`results/cv/det/` holds the detections of the configurations kept in each fold and `results/det/` the COCO
-detections and the fixed-split experiments, so the evaluation reruns on a CPU. Rerunning the choice of
-configuration needs the detections of every fold and configuration, attached with the fold weights to the
-GitHub release `cross-validation-weights-and-detections` (unzip into `results/cv/det/`); the fixed-split
-weights are in the release `fixed-split-weights`. `results/MANIFEST.json` lists the commit, software and
-hardware behind each result.
-
----
+The generated tables use only [results/rebuild/summary.json](results/rebuild/summary.json).
+Older result directories are retained for provenance and are not inputs to the rebuilt README.
 
 ## Layout
 
-| File | Role |
+| Path | Role |
 |---|---|
-| `monodist/kitti.py` | labels, calibration, the fixed split and the three folds |
-| `monodist/geometry.py` | the two formulas, the MLP features, IoU |
-| `monodist/match.py` | matching with KITTI's ignore rules, AP, F1 threshold, recall by distance |
-| `monodist/mlp.py`, `metrics.py` | the distance MLP; AbsRel and the cluster bootstrap |
-| `monodist/detect.py`, `finetune.py`, `yolo_data.py` | YOLO26n inference, fine-tuning configurations, dataset conversion |
-| `monodist/latency.py`, `profile_gpu.py` | per-stage timing; kernel count and CUDA-graph replay |
-| `monodist/evaluate.py`, `crossval.py`, `report.py` | one split, the cross-validation, this README |
-| `kaggle/` | the Kaggle kernels, the push script and the job queue |
+| `monodist/kitti.py`, `geometry.py`, `match.py` | Data, camera geometry, class mapping and scoring |
+| `monodist/mlp.py`, `evaluate.py`, `crossval.py` | Distance models, one-split evaluation and development folds |
+| `monodist/pipeline.py`, `temporal.py` | Shared saved-model inference, association, filtering and TTC |
+| `monodist/analysis.py`, `calibrate.py` | Signed development analysis and final development-only calibration |
+| `monodist/detect.py`, `finetune.py`, `latency.py` | GPU detections, training and saved-pipeline timing |
+| `monodist/report.py`, `README.template.md` | Generate this document from recorded measurements |
+| `kaggle/` | Pinned remote jobs and orchestration |
 
 ---
 
 ## Data and license
 
-The code is released under the **GNU AGPL-3.0** (see `LICENSE`), the license of Ultralytics, which it
-depends on.
-
-The labels and calibration in `data/kitti_tracking/` and every result derived from KITTI come from the
-**KITTI Vision Benchmark Suite** (A. Geiger, P. Lenz, R. Urtasun, "Are we ready for Autonomous Driving?
-The KITTI Vision Benchmark Suite", CVPR 2012), licensed under **CC BY-NC-SA 3.0**: non-commercial use
-only, with attribution, under the same license. See `data/kitti_tracking/README.md`.
+Code: **GNU AGPL-3.0**, see [LICENSE](LICENSE). KITTI labels, calibration and derived results:
+**CC BY-NC-SA 3.0**, with attribution to Geiger, Lenz and Urtasun, *Are we ready for Autonomous Driving?
+The KITTI Vision Benchmark Suite*, CVPR 2012. See [data attribution](data/kitti_tracking/README.md).
