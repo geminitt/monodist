@@ -1,87 +1,75 @@
-# monodist: detections for every configuration on all 21 sequences, then per-frame latency (GPU T4).
-# Uses the fixed-split weights of the GitHub release fixed-split-weights. MODE = "smoke" runs a few frames of everything,
-# MODE = "latency" only the timings (all configurations in one session, so they share the same machine).
+# Rebuilt quality pipeline: development calibration, then the saved ensemble/tracker/TTC.
+# Attach the complete train output from COMMIT. No held-out test labels are evaluated here.
 MODE = "smoke"
 COMMIT = "main"
-ONLY = None  # e.g. ["ft_1280_trt16"]: run only these configurations (and their pipelined variants)
-DETECT_ONLY = None  # e.g. ["ft_1280_nms_trt16"]: detections only for these; latency still for every configuration
-WEIGHTS = "https://github.com/geminitt/monodist/releases/download/fixed-split-weights/best.pt"
+TRAIN_INPUT = None
 
 # <common.py>
 
-import os
 import traceback
 
 root = setup(COMMIT)
-os.chdir("/tmp")  # Ultralytics downloads yolo26n.pt and writes exports into the working directory
-from ultralytics import YOLO  # noqa: E402
+from monodist import crossval  # noqa: E402
 
-from monodist import kitti  # noqa: E402
+search = Path(TRAIN_INPUT) if TRAIN_INPUT else (SRC / "runs/kaggle/train" if LOCAL else Path("/kaggle/input"))
 
-smoke = MODE == "smoke"
-ft = "/tmp/ft.pt"  # exports are written next to the weights, so they live in a writable directory
-fetch(WEIGHTS, ft)
-coco = "yolo26n.pt"
-YOLO(coco)  # download once
-print("fine-tuned weights:", ft, flush=True)
 
-# Fixed-shape TensorRT engines. KITTI frames (~1242 x 375) letterboxed to a long side of 1280 become 1280 x 387,
-# padded to a multiple of 32: 1280 x 416. At 640: 640 x 193 -> 640 x 224.
-engines = {}
-# nms=False exports the one-to-one (NMS-free) head; nms=None the one-to-many head, with NMS left to postprocess.
-for name, shape, nms in (("ft_1280_trt16", [416, 1280], False), ("ft_640_trt16", [224, 640], False),
-                         ("ft_1280_nms_trt16", [416, 1280], None)):
+def input_for(job, head):
+    matches = sorted(search.glob(f"**/det/{job}_{head}/run.json"))
+    if not matches:
+        raise FileNotFoundError(f"no {job}_{head} detections under {search}; attach a complete train output")
+    return matches[0].parent.parent.parent
+
+
+training = input_for("coco", "nms")
+if not LOCAL:
+    records = [json.loads(line) for line in (training / "train.jsonl").read_text().splitlines()]
+    assert any(r.get("step") == "setup" and r.get("commit") == COMMIT for r in records), "train source commit differs"
+    assert any(r.get("step") == "end" and r.get("failed") == [] for r in records), "training is incomplete"
+    table, _ = crossval.select(root, training / "det", ["a", "b"])
+    chosen = max(("a", "b"), key=lambda c: sum(table[k][c] for k in table) / len(table))
+else:
+    chosen = "b"  # local procedure check uses the available selected-model artifacts
+log("eval", step="setup", commit=COMMIT, mode=MODE, final_configuration=chosen,
+    protocol="sequential configurations on GPU 0; ensemble, thresholds, tracker and TTC included")
+
+configs = [("coco_nms", "coco", "nms"), ("finetuned_nms", f"final_{chosen}", "nms"),
+           ("finetuned_e2e", f"final_{chosen}", "e2e")]
+failed = []
+for name, job, head in configs:
     try:
-        if ONLY and name not in ONLY:
-            continue
-        path = Path(YOLO(ft).export(format="engine", quantize=16, imgsz=shape, nms=nms, batch=1, device=0))
-        path = path.rename(path.with_name(f"{name}.engine"))  # every export writes ft.engine: keep each one
-        engines[name] = (path, f"{shape[0]},{shape[1]}")
-        log("eval", step="export", config=name, path=str(path))
+        inputs = input_for(job, head)
+        if not LOCAL and inputs != training:
+            raise ValueError("all configurations must come from the same complete train output")
+        det = inputs / "det" / f"{job}_{head}"
+        weights = inputs / "runs" / job / "weights" / "best.pt" if job != "coco" else Path("/tmp/yolo26n.pt")
+        if job == "coco" and not weights.exists():
+            if LOCAL:
+                import shutil
+                shutil.copy(SRC / "weights" / "yolo26n.pt", weights)
+            else:
+                from ultralytics import YOLO
+                os.chdir("/tmp")
+                YOLO(str(weights))
+        calibration = WORK / "calibration" / name
+        sh(f"PYTHONPATH={SRC} {sys.executable} -m monodist.calibrate --root {root} --det {det} --out {calibration}",
+           timeout=remaining())
+        # A controlled single-pipeline comparison needs the same GPU and no concurrent CPU decode workload.
+        # This timing protocol needs the owner's explicit exception to the usual two-busy-GPUs rule.
+        frames = 3 if LOCAL else (20 if MODE == "smoke" else 300)
+        seq = "0012" if LOCAL else "0019"
+        rounds, warmup = (1, 1) if LOCAL else ((1, 5) if MODE == "smoke" else (3, 30))
+        for pipelined in (False, True):
+            label = name + ("_pipelined" if pipelined else "")
+            cmd = (f"CUDA_VISIBLE_DEVICES=0 PYTHONPATH={SRC} {sys.executable} -m monodist.latency --weights {weights} "
+                   f"--distance {calibration}/distance.pt --root {root} --seq {seq} --frames {frames} --rounds {rounds} "
+                   f"--warmup {warmup} --imgsz 1280 --out {WORK}/latency/{label}.json"
+                   + (" --nms" if head == "nms" else "") + (" --pipelined" if pipelined else ""))
+            sh(cmd, timeout=remaining())
+            log("eval", step="latency", configuration=label)
     except Exception:
-        log("eval", step="export", config=name, error=traceback.format_exc()[-2000:])
-
-configs = [("coco_1280", coco, "1280", False, True), ("ft_1280", ft, "1280", False, False),
-           ("ft_1280_fp16", ft, "1280", True, False), ("ft_640", ft, "640", False, False),
-           ("coco_1280_nms", coco, "1280", False, True), ("ft_1280_nms", ft, "1280", False, False),
-           # torch.compile "reduce-overhead" = CUDA graphs: tests whether eager PyTorch is limited by kernel launches
-           ("ft_1280_cg", ft, "1280", False, False), ("ft_1280_nms_cg", ft, "1280", False, False)]
-configs += [(n, p, s, False, False) for n, (p, s) in engines.items()]
-if ONLY:
-    configs = [c for c in configs if c[0] in ONLY]
-
-seqs = kitti.SEQUENCES  # train sequences too: the distance MLP trains on each detector's own train-split boxes
-if smoke:
-    seqs = ["0003", "0014"]
-for name, weights, imgsz, half, is_coco in configs if MODE != "latency" else []:
-    if (DETECT_ONLY and name not in DETECT_ONLY) or name.endswith("_cg"):  # compiled runs: timing only
-        continue
-    cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.detect --weights {weights} --root {root} --out {WORK}/det/{name} "
-           f"--imgsz {imgsz} --seqs {' '.join(seqs)}" + (" --half" if half else "") + (" --coco" if is_coco else "")
-           + (" --frames 20" if smoke else "") + (" --batch 1" if str(weights).endswith(".engine") else "") + (" --nms" if "_nms" in name else ""))
-    t = time.time()
-    try:
-        sh(cmd, timeout=remaining())
-        log("eval", step="detect", config=name, seconds=round(time.time() - t, 1))
-    except Exception:
-        log("eval", step="detect", config=name, error=traceback.format_exc()[-2000:])
-
-lat = "--frames 30 --rounds 1 --warmup 5" if smoke else "--frames 300 --rounds 3 --warmup 30"
-runs = [(n, w, s, h, False) for n, w, s, h, _ in configs]
-runs += [(n + "_pipelined", w, s, h, True) for n, w, s, h, _ in configs
-         if n in ("ft_1280", "ft_1280_nms", "ft_1280_trt16", "ft_1280_nms_trt16", "ft_640_trt16")]
-for name, weights, imgsz, half, pipelined in runs:
-    cmd = (f"cd /tmp && PYTHONPATH={SRC} python -m monodist.latency --weights {weights} --root {root} --out {WORK}/latency/{name}.json "
-           f"--imgsz {imgsz} {lat}" + (" --half" if half else "") + (" --pipelined" if pipelined else "") + (" --nms" if "_nms" in name else "")
-           + (" --compile reduce-overhead" if name.endswith("_cg") else ""))
-    try:
-        sh(cmd, timeout=remaining())
-    except Exception:
-        log("eval", step="latency", config=name, error=traceback.format_exc()[-2000:])
-for head, flag in (("e2e", ""), ("nms", " --nms")):  # kernels per forward pass, GPU busy time, CUDA graph replay
-    try:
-        sh(f"cd /tmp && PYTHONPATH={SRC} python -m monodist.profile_gpu --weights {ft} --out {WORK}/latency/profile_{head}.json{flag}", timeout=remaining())
-    except Exception:
-        log("eval", step="profile", head=head, error=traceback.format_exc()[-2000:])
-log("eval", step="hardware", cpu_count=os.cpu_count(), affinity=len(os.sched_getaffinity(0)))
-sh("lscpu | grep 'Model name'; nvidia-smi --query-gpu=name,clocks.max.sm --format=csv")
+        failed.append(name)
+        log("eval", step="failed", configuration=name, error=traceback.format_exc())
+log("eval", step="end", failed=failed, seconds=time.time() - START)
+if failed:
+    raise SystemExit(f"failed configurations: {failed}")

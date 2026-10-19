@@ -39,7 +39,7 @@ def predict_images(model, images, imgsz, conf, coco=False, nms=False, half=False
         if coco:
             cls = np.array([COCO_TO_KITTI[c] for c in cls], int)
         out.append({"box": b.xyxy.cpu().numpy().reshape(-1, 4), "score": b.conf.cpu().numpy(), "cls": cls,
-                    "image_hw": np.array(r.orig_shape)})
+                    "image_hw": np.array(r.orig_shape), "speed": r.speed})
     return out
 
 
