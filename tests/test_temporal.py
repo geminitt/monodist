@@ -55,3 +55,33 @@ def test_tracker_does_not_join_different_classes_and_drops_old_tracks():
 def test_labeled_speed_of_a_real_track(root):
     speed = temporal.labeled_speed(root, ["0000"])
     assert len(speed) > 100 and all(np.isfinite(v) and abs(v) < 40 for v in speed.values())
+
+
+def test_automatic_association_uses_no_ground_truth_and_resets_after_gaps():
+    rows = {"seq": np.array(["0000"] * 4), "frame": np.array([0, 1, 2, 7]),
+            "box": np.tile([0., 0., 10., 10.], (4, 1)), "cls": np.zeros(4, int),
+            "pred_mlp": np.array([10., 100., 9., 8.]), "track": np.array([10, -1, 20, 10])}
+    ids = temporal.associate(rows)
+    assert ids[0] == ids[1] == ids[2] and ids[3] != ids[2]
+    assert np.array_equal(ids, temporal.associate({**rows, "track": np.full(4, 42)}))
+    # Replaying association once and filtering the predicted tracks must equal the live tracker.
+    zf, vf = temporal.run_rows({**rows, "track": ids}, 0.02, 2.)
+    live = temporal.Tracker(0.02, 2.)
+    for i in range(4):
+        ti, tz, tv = live.update(int(rows["frame"][i]), rows["box"][i:i + 1], rows["cls"][i:i + 1],
+                                 rows["pred_mlp"][i:i + 1])
+        assert ti[0] == ids[i] and np.allclose([tz[0], tv[0]], [zf[i], vf[i]])
+
+
+def test_false_positives_enter_tracking_before_label_scoring():
+    rows = {"seq": np.array(["0000"] * 3), "frame": np.arange(3),
+            "box": np.tile([0., 0., 10., 10.], (3, 1)), "cls": np.zeros(3, int),
+            "pred_mlp": np.array([10., 100., 9.]), "track": np.array([10, -1, 10]),
+            "z": np.array([10., np.nan, 9.]), "status": np.array([1, 0, 1])}
+    ids = temporal.associate(rows)
+    speed = {("0000", 10, 0): -5., ("0000", 10, 2): -5.}
+    result, _, _ = temporal.score_observations(rows, ids, speed, 0.01, 1.)
+    assert result["matched_at_least_2m"] == 2 and result["n"] == 1
+    assert np.isclose(result["raw"]["speed_mae"], 905.)  # the FP, not a label id, was the previous observation
+    identity = temporal.association_summary(rows, ids)
+    assert identity["unmatched_detections"] == 1

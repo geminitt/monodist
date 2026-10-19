@@ -124,7 +124,7 @@ def labeled_speed(root, seqs):
 
 def run_rows(rows, meas_rel, accel):
     """Filter every track of per-object rows (seq, track, frame, pred_mlp); returns filtered Z and dZ/dt."""
-    zf, vf = np.full(len(rows["z"]), np.nan), np.full(len(rows["z"]), np.nan)
+    zf, vf = np.full(len(rows["pred_mlp"]), np.nan), np.full(len(rows["pred_mlp"]), np.nan)
     groups = defaultdict(list)
     for i, key in enumerate(zip(rows["seq"], rows["track"])):
         groups[key].append(i)
@@ -136,7 +136,7 @@ def run_rows(rows, meas_rel, accel):
 
 def raw_speed(rows):
     """dZ/dt from consecutive raw predictions of the same track (the unfiltered baseline); NaN on a track's first row."""
-    v = np.full(len(rows["z"]), np.nan)
+    v = np.full(len(rows["pred_mlp"]), np.nan)
     groups = defaultdict(list)
     for i, key in enumerate(zip(rows["seq"], rows["track"])):
         groups[key].append(i)
@@ -162,6 +162,75 @@ def scores(rows, zf, vf, v_true, v_raw):
                      "ttc_median_rel_error": float(np.median(rel)) if near.any() else None,
                      "ttc_within_20pct": float(np.mean(rel <= 0.2)) if near.any() else None}
     return out
+
+
+def associate(rows):
+    """Run the actual tracker on every kept box, including false positives and ignored regions.
+
+    Association depends only on sequence, frame, box and predicted class. KITTI track ids are scoring labels.
+    Returns tracker ids (local to a sequence); filter settings do not affect IoU association.
+    """
+    ids = np.full(len(rows["frame"]), -1, int)
+    for seq in np.unique(rows["seq"]):
+        tracker = Tracker(meas_rel=0.01, accel=1.0)
+        indices = np.flatnonzero(rows["seq"] == seq)
+        indices = indices[np.argsort(rows["frame"][indices], kind="stable")]
+        frames, starts = np.unique(rows["frame"][indices], return_index=True)
+        for frame, idx in zip(frames, np.split(indices, starts[1:])):
+            ids[idx], _, _ = tracker.update(int(frame), rows["box"][idx], rows["cls"][idx], rows["pred_mlp"][idx])
+    return ids
+
+
+def score_observations(rows, ids, speed, meas_rel, accel):
+    """Score automatic tracks; speed and KITTI ids are consulted only after filtering."""
+    predicted = {**rows, "track": ids}
+    zf, vf = run_rows(predicted, meas_rel, accel)
+    vr = raw_speed(predicted)
+    vt = np.array([speed.get((s, int(t), int(f)), np.nan)
+                   for s, t, f in zip(rows["seq"], rows["track"], rows["frame"])])
+    valid = (rows["track"] >= 0) & (rows["z"] >= 2.0)
+    vt[~valid] = np.nan
+    result = scores(rows, zf, vf, vt, vr)
+    result["detections"] = len(ids)
+    result["matched_at_least_2m"] = int(valid.sum())
+    result["with_history_fraction"] = float(np.mean(np.isfinite(vr[valid]))) if valid.any() else None
+    result["distance_all_matched"] = {
+        name: float(np.mean(np.abs(z[valid] - rows["z"][valid]) / rows["z"][valid])) if valid.any() else None
+        for name, z in (("raw", rows["pred_mlp"]), ("filtered", zf))}
+    return result, zf, vf
+
+
+def association_summary(rows, ids):
+    """Descriptive identity continuity, not an official MOT benchmark (no HOTA/MOTA claim)."""
+    valid = rows["track"] >= 0
+    gt_groups, predicted_groups = defaultdict(list), defaultdict(set)
+    for i in np.flatnonzero(valid):
+        gt_groups[(rows["seq"][i], rows["track"][i])].append(i)
+        predicted_groups[(rows["seq"][i], ids[i])].add(int(rows["track"][i]))
+    changes, transitions, split = 0, 0, 0
+    for idx in gt_groups.values():
+        idx = np.array(idx)[np.argsort(rows["frame"][idx], kind="stable")]
+        close = np.diff(rows["frame"][idx]) <= 3  # same gap tolerance as Tracker.max_age
+        changes += int(((np.diff(ids[idx]) != 0) & close).sum())
+        transitions += int(close.sum())
+        split += len(np.unique(ids[idx])) > 1
+    return {"matched_ground_truth_tracks": len(gt_groups), "nearby_matched_transitions": transitions,
+            "identity_changes_across_nearby_matches": changes, "ground_truth_tracks_with_multiple_ids": split,
+            "predicted_tracks_matching_multiple_objects": sum(len(v) > 1 for v in predicted_groups.values()),
+            "unmatched_detections": int((rows["status"] == 0).sum()),
+            "ignored_detections": int((rows["status"] == -1).sum())}
+
+
+def select_filter(rows, ids, speed):
+    """Choose the filter on this model's validation sequences, never on a fold's test observations."""
+    table = []
+    for meas_rel, accel in itertools.product(MEAS_REL, ACCEL):
+        result, _, _ = score_observations(rows, ids, speed, meas_rel, accel)
+        value = result["filtered"]["speed_mae"]
+        if not np.isfinite(value):
+            raise ValueError("no finite validation speed score; cannot select the filter")
+        table.append({"meas_rel": meas_rel, "accel": accel, "speed_mae": value})
+    return min(table, key=lambda r: r["speed_mae"]), table
 
 
 def cross_validated(root, rows):

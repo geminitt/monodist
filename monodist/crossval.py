@@ -24,9 +24,8 @@ from .detect import merge
 
 def val_map(root, det_dir, fold):
     """mAP50-95 on the fold's val sequences, KITTI ignore rules included."""
-    det, _ = merge(det_dir)
     val = kitti.FOLDS[fold]["val"]
-    det = evaluate.subset(det, val)
+    det, _ = merge(det_dir, seqs=val)
     gt = match.ground_truth(root, val)
     status, _ = match.evaluate(det, gt)
     return match.detection_report(det, gt, status)["mAP50-95"]

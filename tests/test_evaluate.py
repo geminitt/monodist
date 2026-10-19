@@ -56,6 +56,37 @@ def test_a_fold_reads_only_its_own_sequences(root, tmp_path):
     assert set(np.unique(rows["seq"])) == set(kitti.FOLDS[0]["test"])
 
 
+def test_tracking_artifacts_do_not_read_held_out_files(root, tmp_path, monkeypatch):
+    """Guard both detection and label reads, not just the final set of reported rows."""
+    from monodist import mlp
+    oracle_detections(root, tmp_path / "dev", seqs=kitti.DEVELOPMENT)
+    original_merge, original_labels = evaluate.merge, kitti.load_labels
+
+    def guarded_merge(directory, seqs=None):
+        assert seqs is not None and not set(seqs) & set(kitti.TEST)
+        return original_merge(directory, seqs)
+
+    def guarded_labels(root, seq):
+        assert seq not in kitti.TEST
+        return original_labels(root, seq)
+
+    monkeypatch.setattr(evaluate, "merge", guarded_merge)
+    monkeypatch.setattr(kitti, "load_labels", guarded_labels)
+    fold = kitti.FOLDS[0]
+    info, rows = evaluate.predict(root, tmp_path / "dev", fold, mlp_epochs=3,
+                                  save_model=tmp_path / "distance.pt", save_observations=tmp_path / "obs.npz")
+    obs = dict(np.load(tmp_path / "obs.npz"))
+    assert set(obs["seq"]) == set(fold["val"] + fold["test"])
+    assert np.all(obs["track"] >= 0)  # an oracle has no false positives
+    assert np.all(obs["status"] == 1)
+    model, meta = mlp.load(tmp_path / "distance.pt")
+    assert meta["conf"] == info["conf"]
+    cam = evaluate.camera(root, sorted(set(obs["seq"])),
+                          {s: (370, 1224) if s in ("0014", "0015") else (375, 1242) for s in set(obs["seq"])})
+    assert np.allclose(mlp.predict(model, evaluate.feats(obs, cam)), obs["pred_mlp"])
+    assert np.allclose(rows["label_mlp"], rows["pred_mlp"])
+
+
 def test_compare_on_common_objects(root, tmp_path):
     oracle_detections(root, tmp_path / "a")
     oracle_detections(root, tmp_path / "b", jitter=2.0)

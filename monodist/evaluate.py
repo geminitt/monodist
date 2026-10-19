@@ -88,16 +88,35 @@ def subset(d, seqs):
     return {k: v[m] for k, v in d.items()}
 
 
-def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None):
+def observations(det, gt, model, cam):
+    """Kept detections, including false positives, for tracking without label-based association.
+
+    Labels are attached with class-agnostic IoU >= 0.5 matching for scoring only. They must never be inputs
+    to the tracker. Matching is repeated after thresholding so discarded detections cannot claim an object.
+    """
+    ad, ag = match.agnostic(det, gt)
+    status, idx = match.evaluate(ad, ag, thresholds=[0.5])
+    out = {k: det[k] for k in ("seq", "frame", "box", "score", "cls")}
+    n = len(det["score"])
+    out.update(pred_mlp=mlp.predict(model, feats(det, cam)), status=status[:, 0],
+               track=np.full(n, -1, int), z=np.full(n, np.nan), gt_cls=np.full(n, -1, int))
+    for i in np.flatnonzero(status[:, 0] == match.TP):
+        g = gt[(det["seq"][i], det["frame"][i])]
+        j = idx[i, 0]
+        out["track"][i], out["z"][i], out["gt_cls"][i] = g["track"][j], g["z"][j], g["cls"][j]
+    return out
+
+
+def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None, save_observations=None):
     """One split: detection metrics on test, and every matched test object with the three distance predictions.
 
     save_model: a path where the distance ensemble is saved with its thresholds, constants and provenance
     (monodist.pipeline loads it).
     """
     split = split or kitti.SPLIT
-    det, sizes = merge(det_dir)
     # Only the split's own sequences are read: a cross-validation fold never touches the held-out kitti.TEST.
     seqs = sorted(set(split["train"]) | set(split["val"]) | set(split["test"]))
+    det, sizes = merge(det_dir, seqs=seqs)
     missing = sorted(set(seqs) - set(sizes))
     assert not missing, f"{det_dir}: no detections for sequences {missing}"
     det = subset(det, seqs)
@@ -151,6 +170,14 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None):
             "constants": const, "min_z": MIN_Z, "epochs": epochs, "split": split, "det_dir": str(det_dir),
             "detector": json.loads(run.read_text()) if run.exists() else None})
 
+    if save_observations:
+        seqs_observed = split["val"] + split["test"]
+        od = subset(det, seqs_observed)
+        keep = od["score"] >= match.per_detection_conf(od, conf)
+        od = {k: v[keep] for k, v in od.items()}
+        og = {k: v for k, v in gt.items() if k[0] in seqs_observed}
+        np.savez_compressed(save_observations, **observations(od, og, model, cam))
+
     kept = tdet["score"] >= match.per_detection_conf(tdet, conf)
     kdet = {k: v[kept] for k, v in tdet.items()}
     info["precision_by_predicted_distance"] = precision_by_distance(
@@ -159,11 +186,14 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None):
     za, zb, fallback = geometric(test, test["box"], cam, const)
     ga, gb, _ = geometric(test, test["gt_box"], cam, const)
     zm = mlp.predict(model, feats(test, cam))
-    rows = {k: test[k] for k in ("seq", "frame", "track", "cls", "trunc", "z", "range")}
+    rows = {k: test[k] for k in ("seq", "frame", "track", "cls", "trunc", "occ", "z", "range", "box", "gt_box", "score")}
     rows.update({"pred_size": za, "pred_ground": zb, "pred_mlp": zm,
                  "label_size": ga, "label_ground": gb, "fallback": fallback,
                  "range_size": to_range(test, za, cam), "range_ground": to_range(test, zb, cam),
-                 "range_mlp": to_range(test, zm, cam)})
+                 "range_mlp": to_range(test, zm, cam),
+                 "label_mlp": mlp.predict(model, geometry.features(
+                     test["gt_box"], test["cls"], per_row(cam, test["seq"], 0), per_row(cam, test["seq"], 1),
+                     per_row(cam, test["seq"], 2), per_row(cam, test["seq"], 3), per_row(cam, test["seq"], 4)))})
     rows["keys"] = np.array([f"{s}/{f}/{t}" for s, f, t in zip(test["seq"], test["frame"], test["track"])])
     return info, rows
 
