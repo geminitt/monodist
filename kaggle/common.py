@@ -27,6 +27,12 @@ def remaining():
     return max(1.0, DEADLINE - (time.time() - START))
 
 
+def check_gpus(names):
+    """Fail before remote work if the requested two-T4 environment was not provisioned."""
+    if not LOCAL and (len(names) != 2 or any("T4" not in name for name in names)):
+        raise RuntimeError(f"expected two T4 GPUs, found {names}; refusing a CPU or other-GPU fallback")
+
+
 def sh(cmd, timeout=None):
     """Run a shell command; raise CalledProcessError on failure, TimeoutExpired after timeout seconds.
 
@@ -60,7 +66,9 @@ def setup(commit):
         root = next(Path("/kaggle/input").glob("**/training/label_02")).parent
     print("KITTI training dir:", root, flush=True)
     import torch
-    print("torch", torch.__version__, "| GPUs:", [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])
+    names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
+    print("torch", torch.__version__, "| GPUs:", names)
+    check_gpus(names)
     return root
 
 

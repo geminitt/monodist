@@ -51,6 +51,23 @@ def test_remaining_is_never_zero(monkeypatch):
     assert common.remaining() == 1.0
 
 
+@pytest.mark.parametrize("names", [[], ["Tesla T4"], ["A100", "A100"]])
+def test_remote_setup_refuses_the_wrong_gpu_allocation(monkeypatch, names):
+    monkeypatch.setattr(common, "LOCAL", None)
+    with pytest.raises(RuntimeError, match="expected two T4 GPUs"):
+        common.check_gpus(names)
+
+
+def test_remote_setup_accepts_two_t4s(monkeypatch):
+    monkeypatch.setattr(common, "LOCAL", None)
+    common.check_gpus(["Tesla T4", "Tesla T4"])
+
+
+def test_local_check_can_use_one_laptop_gpu(monkeypatch):
+    monkeypatch.setattr(common, "LOCAL", "/tmp/local-check")
+    common.check_gpus(["NVIDIA RTX 1000 Ada Generation Laptop GPU"])
+
+
 def done_proc(code, out=""):
     return subprocess.CompletedProcess(["kaggle"], code, out, "")
 
