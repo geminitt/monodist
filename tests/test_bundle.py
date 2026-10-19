@@ -58,3 +58,13 @@ def test_bundle_rejects_corrupt_bytes_and_changed_operating_point(tmp_path):
 def test_bundle_paths_cannot_escape_the_archive(tmp_path,path):
     with pytest.raises(ValueError,match='bundle path'):
         bundle.child(tmp_path,path)
+
+
+def test_bundle_rejects_video_not_covered_by_its_manifest(tmp_path):
+    root, _, _ = archive(tmp_path)
+    path=root/'bundle.json'
+    manifest=json.loads(path.read_text())
+    manifest['video']='sample/unverified.mp4'
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError,match='unsigned video'):
+        bundle.Bundle(root)

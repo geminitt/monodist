@@ -167,6 +167,28 @@ No numerical superiority over these systems is claimed under unmatched protocols
 
 ## Local closed-loop demo and portable delivery
 
+### Real-video playback
+
+`/video` processes a calibrated KITTI 0012 clip on demand: actual video decode, fixed YOLO/distance model,
+tracker/TTC, annotated JPEG and browser playback. Play/pause/reset, frame stepping and native-rate/max-speed
+playback are available. The page reports native FPS, server processing capacity, request-to-image decode
+latency and observed playback FPS (including browser paint opportunities). No predicted frames are cached.
+
+Include a calibrated **10 FPS** clip with `bundle build --video /path/to/clip.mp4`, or pass
+`demo --video /path/to/clip.mp4` at launch. Video dimensions must match the bundle camera; optional one-pixel
+encoder padding is removed before inference. The browser route is **http://127.0.0.1:8765/video**.
+The default device is CPU. For a configured local CUDA environment, use:
+
+```bash
+pixi run -e gpu python -m monodist.demo --bundle /path/to/monodist-demo --video /path/to/clip.mp4 --device 0
+```
+
+Realtime means keeping pace with the source's 10 FPS; this does not establish 30 FPS operation. Actual FPS
+depends on device, current load, decoding and browser transport. This recorded-video mode cannot change the
+future scene in response to braking. True 3D control-loop work is separate from this playback check.
+
+### 2.5D feasibility prototype
+
 The browser demo renders a 2.5D photographic camera, runs **actual YOLO26n → saved distance ensemble →
 tracker/Kalman → stopping-distance policy**, and applies acceleration to the next world state. Ground truth
 enters rendering and diagnostics only. No detections or distance predictions are replaced with world truth.
@@ -244,6 +266,7 @@ Older result directories are retained for provenance and are not inputs to the r
 | `monodist/pipeline.py`, `temporal.py` | Shared saved-model inference, association, filtering and TTC |
 | `monodist/analysis.py`, `calibrate.py` | Signed development analysis and final development-only calibration |
 | `monodist/detect.py`, `finetune.py`, `latency.py` | GPU detections, training and saved-pipeline timing |
+| `monodist/video.py` | Consecutive calibrated video inference and processing-timing checks |
 | `monodist/bundle.py`, `demo.py`, `simulation.py`, `web/dist/` | Portable fixed-model archive, local browser UI and learned-perception control loop |
 | `monodist/report.py`, `README.template.md` | Generate this document from recorded measurements |
 | `kaggle/` | Pinned remote jobs and orchestration |

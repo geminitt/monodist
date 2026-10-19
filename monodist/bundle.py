@@ -47,7 +47,7 @@ def read(root):
         path = child(root, filename)
         if not path.is_file() or sha(path) != digest:
             raise ValueError(f'missing or changed bundle file: {filename}')
-    for name in ('weights', 'distance', 'calibration'):
+    for name in ('weights', 'distance', 'calibration') + (('video',) if manifest.get('video') else ()):
         if manifest[name] not in manifest['files']:
             raise ValueError(f'unsigned {name}')
     if not manifest['images'] or any(name not in manifest['files'] for name in manifest['images']):
@@ -100,7 +100,7 @@ def objects(result, names=kitti.CLASSES):
     return out
 
 
-def build(weights, distance, images, calibration, out, frames=78, source_commit=None):
+def build(weights, distance, images, calibration, out, frames=78, source_commit=None, video=None):
     """Copy evaluated bytes; never fit, convert, fuse, or rewrite either checkpoint."""
     weights, distance, images, calibration, out = map(Path, (weights, distance, images, calibration, out))
     if out.exists():
@@ -124,6 +124,8 @@ def build(weights, distance, images, calibration, out, frames=78, source_commit=
         shutil.copy2(weights, root / 'models/detector.pt')
         shutil.copy2(distance, root / 'models/distance.pt')
         shutil.copy2(calibration, root / 'sample/calib.txt')
+        if video:
+            shutil.copy2(video,root/'sample/video.mp4')
         for path in selected:
             shutil.copy2(path, root / 'sample/images' / path.name)
         for path in sorted((repo / 'monodist').rglob('*')):
@@ -143,7 +145,9 @@ def build(weights, distance, images, calibration, out, frames=78, source_commit=
             '```bash\npixi run python -m monodist.bundle verify --bundle .\n'
             'pixi run python -m monodist.bundle run --bundle . --frames 6\n'
             'pixi run python -m monodist.demo --bundle .\n```\n\n'
-            'Open http://127.0.0.1:8765 in your browser. Stop the local server with Ctrl+C. '
+            'Open http://127.0.0.1:8765/video for actual video inference when the bundle includes a clip. '
+            'The page measures processing and display FPS, with play/pause/reset and source pacing. '
+            'Open http://127.0.0.1:8765 for the 2.5D prototype. Stop the server with Ctrl+C. '
             'The simulation needs all 78 sample frames. It uses actual YOLO and distance inference on photo-billboard '
             'camera images, not a photorealistic 3D world. Braking changes future images. '
             'World truth is for rendering/diagnostics only. Nominal stationary-obstacle control was demonstrated; '
@@ -157,6 +161,7 @@ def build(weights, distance, images, calibration, out, frames=78, source_commit=
                     'detector': {key: sig[key] for key in ('imgsz', 'nms', 'coco', 'half')},
                     'thresholds': meta['conf'], 'temporal': meta['temporal'], 'frame_period_s': 0.1,
                     'measurement_source_commit': source_commit,
+                    **({'video':'sample/video.mp4'} if video else {}),
                     'build_environment': {name: importlib.metadata.version(name) for name in ('torch', 'numpy', 'ultralytics')},
                     'files': {str(path.relative_to(root)): sha(path) for path in sorted(root.rglob('*')) if path.is_file()}}
         (root / 'bundle.json').write_text(json.dumps(manifest, indent=1, allow_nan=False))
@@ -178,6 +183,7 @@ def main():
     for name in ('weights', 'distance', 'images', 'calibration', 'out'):
         create.add_argument('--' + name, required=True)
     create.add_argument('--frames', type=int, default=78)
+    create.add_argument('--video',type=Path,help='optional calibrated 10 FPS clip included in the bundle')
     create.add_argument('--source-commit', help='measurement source, if known; never inferred from current HEAD')
     for name in ('verify', 'run'):
         command = commands.add_parser(name)

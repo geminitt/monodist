@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 import cv2
 import numpy as np
 
-from .bundle import Bundle, objects
+from .bundle import Bundle, child, objects
 from .simulation import Controller, Decision, Observation, scenario
 
 SCENARIOS = {'stationary_obstacle': 'Stationary vehicle', 'lead_brakes': 'Lead vehicle brakes',
@@ -135,7 +135,7 @@ class Session:
                 'history':self.history[-121:]}
 
 
-def server(session, port):
+def server(session, port, video=None):
     """Single shared local episode. Lock reset/step so two tabs cannot interleave tracker updates."""
     lock = threading.Lock()
 
@@ -152,13 +152,17 @@ def server(session, port):
 
         def do_GET(self):
             path = urlsplit(self.path).path
+            if path == '/api/video/info':
+                self.reply(200,video.info() if video else {'error':'Start the server with --video and a calibrated 10 FPS clip'})
+                return
             if path == '/api/info':
                 self.reply(200,{'scenarios':SCENARIOS,'dt':0.1,'episode_s':12,
                                 'sensor':'YOLO26n + saved five-model distance ensemble + Kalman',
                                 'shared_session':True})
                 return
             files = {'/':('index.html','text/html; charset=utf-8'),
-                     '/app.js':('app.js','text/javascript'),'/style.css':('style.css','text/css')}
+                     '/app.js':('app.js','text/javascript'),'/style.css':('style.css','text/css'),
+                     '/video':('video.html','text/html; charset=utf-8'),'/video.js':('video.js','text/javascript')}
             if path not in files:
                 self.reply(404,{'error':'Not found'})
                 return
@@ -180,7 +184,11 @@ def server(session, port):
                 if not isinstance(data,dict):
                     raise ValueError('request must be an object')
                 with lock:
-                    if self.path == '/api/reset':
+                    if self.path in ('/api/video/reset','/api/video/step'):
+                        if video is None:
+                            raise ValueError('video is not configured')
+                        response=video.reset() if self.path.endswith('/reset') else video.next()
+                    elif self.path == '/api/reset':
                         response = session.reset(data.get('scenario'),data.get('control'))
                     elif self.path == '/api/step':
                         response = session.capture()
@@ -203,11 +211,15 @@ def main():
     ap.add_argument('--bundle',type=Path,required=True)
     ap.add_argument('--port',type=int,default=8765)
     ap.add_argument('--device',default='cpu')
+    ap.add_argument('--video',type=Path,help='calibrated 10 FPS clip matching bundle camera dimensions')
     args = ap.parse_args()
     import torch
     torch.set_num_threads(2)
     session = Session(Bundle(args.bundle),args.device)
-    app = server(session,args.port)
+    from .video import Video
+    video_path=args.video or (child(session.bundle.root,session.bundle.manifest['video']) if session.bundle.manifest.get('video') else None)
+    clip=Video(session.bundle,video_path,args.device) if video_path else None
+    app = server(session,args.port,clip)
     print(f'Open http://127.0.0.1:{app.server_port} · actual model inference · Ctrl+C to stop',flush=True)
     try:
         app.serve_forever()
@@ -215,6 +227,7 @@ def main():
         pass
     finally:
         app.server_close()
+        if clip: clip.close()
 
 
 if __name__ == '__main__':
