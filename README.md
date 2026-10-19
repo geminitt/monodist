@@ -236,10 +236,54 @@ No numerical superiority over these systems is claimed under unmatched protocols
   The effect on generalization was not isolated. Near/truncated objects remain a weakness in development.
 - Camera features use one focal length; the ground-plane baseline assumes a level camera and flat road.
   Arbitrary camera geometry and road pitch are not verified.
-- TTC describes optical-axis closing motion, not whether two trajectories will collide. No braking controller,
-  closed-loop simulation, safety guarantee or demo is evaluated here.
+- TTC describes optical-axis closing motion, not whether two trajectories will collide. The KITTI metrics
+  and T4 timings do not evaluate the separate illustrative simulation controller or establish driving safety.
 - Training with RAM caching emitted nondeterminism warnings. Source/input hashes do not imply bit-identical
   retraining. TensorRT, FP16 and compiled variants are not part of the rebuilt timing matrix.
+
+---
+
+## Local closed-loop demo and portable delivery
+
+The browser demo renders a 2.5D photographic camera, runs **actual YOLO26n → saved distance ensemble →
+tracker/Kalman → stopping-distance policy**, and applies acceleration to the next world state. Ground truth
+enters rendering and diagnostics only. No detections or distance predictions are replaced with world truth.
+
+Build a local archive from the fixed fine-tuned NMS detector and its matching timed distance checkpoint:
+
+```bash
+pixi run python -m monodist.bundle build --weights /path/to/best.pt --distance /path/to/distance.pt --images data/kitti_tracking/training/image_02/0012 --calibration data/kitti_tracking/training/calib/0012.txt --frames 78 --source-commit e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9 --out /path/to/monodist-demo.zip
+```
+
+The archive includes unchanged checkpoints, saved confidence/filter settings, calibration, all 78 development
+sample images, source, locked dependencies and `START_HERE.md`. Extract it, enter `monodist-demo`, then run:
+
+```bash
+pixi install --frozen
+pixi run python -m monodist.bundle verify --bundle .
+pixi run python -m monodist.bundle run --bundle . --frames 6
+pixi run python -m monodist.demo --bundle .
+```
+
+Open **http://127.0.0.1:8765**. Use Run/Pause, Step, Reset, scenario selection and automatic-braking on/off.
+Dependencies require an initial download; models are local and inference runs offline. Linux/WSL and pixi
+are required. The server binds to loopback and shares one episode across tabs. Stop it with Ctrl+C.
+
+A local actual-model check on the rendered scenes gave these outcomes. They illustrate this renderer/policy,
+not real-world driving performance or an additional KITTI benchmark:
+
+| Scenario | Automatic braking on | Automatic braking off |
+|---|---|---|
+| Stationary vehicle | Stopped without collision, 5.36 m center-depth remaining | Collision |
+| Lead vehicle brakes | Collision at 3.53 m/s ego speed | Collision at 15 m/s |
+| Vehicle outside corridor | No braking, no collision | No collision |
+| Late obstacle | Collision at 12.92 m/s ego speed | Collision at 15 m/s |
+
+The car is a scaled KITTI photograph on a fixed background. Geometry, motion, lighting and occlusion are
+simplified. The distance estimates are biased on these rendered images, and detections can disappear.
+The UI exposes those outputs and retains failure cases. The policy uses illustrative 6 m/s² braking;
+it is not trained or validated for driving. Simulation time advances by 0.1 s per step independently of
+inference wall time. This demo does not replace the frozen quality/latency measurements above.
 
 ---
 
@@ -278,6 +322,7 @@ Older result directories are retained for provenance and are not inputs to the r
 | `monodist/pipeline.py`, `temporal.py` | Shared saved-model inference, association, filtering and TTC |
 | `monodist/analysis.py`, `calibrate.py` | Signed development analysis and final development-only calibration |
 | `monodist/detect.py`, `finetune.py`, `latency.py` | GPU detections, training and saved-pipeline timing |
+| `monodist/bundle.py`, `demo.py`, `simulation.py`, `web/dist/` | Portable fixed-model archive, local browser UI and learned-perception control loop |
 | `monodist/report.py`, `README.template.md` | Generate this document from recorded measurements |
 | `kaggle/` | Pinned remote jobs and orchestration |
 
