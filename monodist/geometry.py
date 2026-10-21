@@ -57,14 +57,30 @@ def ground_or_size(box, cls, f, cy, cam_height, image_h, class_height):
 
 
 # One-hot class columns: a single class number would tell the MLP that Cyclist is "more" than Pedestrian.
-FEATURES = ("h/f", "w/f", "(v2-cy)/f", "(v1-cy)/f", "(u-cx)/f", *(c.lower() for c in CLASSES), "cut")
+_BASE = ("h/f", "w/f", "(v2-cy)/f", "(v1-cy)/f", "(u-cx)/f", *(c.lower() for c in CLASSES))
+# "cut": one flag for a box at any image border (the ensembles timed and TEST-scored on 2026-10-19).
+# "edge": one flag per border. A box cut at the bottom has lost its ground contact, a box cut at a side has not;
+# development out-of-fold, edge flags lowered the near-car (0-10 m) mean absolute error from 1.53 to 1.21 m.
+FEATURE_SETS = {"cut": _BASE + ("cut",), "edge": _BASE + ("cut_left", "cut_right", "cut_top", "cut_bottom")}
+FEATURES = FEATURE_SETS["edge"]  # what new ensembles are trained on
 N_CLASSES = len(CLASSES)
 
 
-def features(box, cls, f, cx, cy, image_w, image_h):
+def feature_names(meta):
+    """The feature set a saved ensemble was trained on; refuses a set this code cannot compute."""
+    names = tuple(meta["features"])
+    if names not in FEATURE_SETS.values():
+        raise ValueError(f"unknown distance features {list(names)}")
+    return names
+
+
+def features(box, cls, f, cx, cy, image_w, image_h, names=FEATURES):
     """Inputs of the learned distance model, every pixel quantity divided by f (angles, camera independent)."""
+    if tuple(names) not in FEATURE_SETS.values():
+        raise ValueError(f"unknown distance features {list(names)}")
     x1, y1, x2, y2 = box.T
-    cut = (x1 < BORDER) | (y1 < BORDER) | (x2 > image_w - BORDER) | (y2 > image_h - BORDER)
+    edges = [x1 < BORDER, x2 > image_w - BORDER, y1 < BORDER, y2 > image_h - BORDER]  # left, right, top, bottom
+    flags = edges if names[-1] != "cut" else [edges[0] | edges[1] | edges[2] | edges[3]]
     return np.stack([
         (y2 - y1) / f,
         (x2 - x1) / f,
@@ -72,7 +88,7 @@ def features(box, cls, f, cx, cy, image_w, image_h):
         (y1 - cy) / f,
         ((x1 + x2) / 2 - cx) / f,
         *np.eye(N_CLASSES)[np.asarray(cls, int)].T,
-        cut.astype(float),
+        *(flag.astype(float) for flag in flags),
     ], axis=1)
 
 

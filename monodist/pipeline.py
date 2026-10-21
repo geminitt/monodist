@@ -27,7 +27,8 @@ class Pipeline:
     def __init__(self, weights, distance, imgsz=1280, nms=True, coco=False, half=False, temporal_settings=None):
         from ultralytics import YOLO
         self.detector = YOLO(str(weights))
-        self.models, self.meta = mlp.load(distance, features=geometry.FEATURES)
+        self.models, self.meta = mlp.load(distance)
+        geometry.feature_names(self.meta)  # refuse an ensemble on features this code cannot compute
         self.conf = np.array([self.meta["conf"][c] for c in self.meta["classes"]])
         self.imgsz, self.nms, self.coco, self.half = imgsz, nms, coco, half
         self.temporal_settings = temporal_settings or self.meta.get("temporal")
@@ -42,7 +43,8 @@ class Pipeline:
         """Depth Z and Euclidean range of each box, from the ensemble."""
         f, cx, cy = camera
         h, w = image_hw
-        z = mlp.predict(self.models, geometry.features(box, cls, f, cx, cy, w, h)) if len(box) else np.zeros(0)
+        names = geometry.feature_names(self.meta)
+        z = mlp.predict(self.models, geometry.features(box, cls, f, cx, cy, w, h, names)) if len(box) else np.zeros(0)
         return z, geometry.depth_to_range(box, z, f, cx, cy)
 
     def finish(self, r, camera):

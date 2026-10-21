@@ -61,7 +61,8 @@ class Bundle:
     def __init__(self, root):
         self.root = Path(root).resolve()
         self.manifest = read(self.root)
-        self.models, self.meta = mlp.load(child(self.root, self.manifest['distance']), features=geometry.FEATURES)
+        self.models, self.meta = mlp.load(child(self.root, self.manifest['distance']))
+        geometry.feature_names(self.meta)  # refuse an ensemble on features this code cannot compute
         sig = self.meta['detector']
         if sha(child(self.root, self.manifest['weights'])) != sig['weights']['sha256']:
             raise ValueError('detector differs from the saved distance ensemble')
@@ -105,7 +106,8 @@ def build(weights, distance, images, calibration, out, frames=78, source_commit=
     weights, distance, images, calibration, out = map(Path, (weights, distance, images, calibration, out))
     if out.exists():
         raise FileExistsError(f'choose a fresh archive path: {out}')
-    _, meta = mlp.load(distance, features=geometry.FEATURES)
+    _, meta = mlp.load(distance)
+    geometry.feature_names(meta)
     sig = meta['detector']
     if sha(weights) != sig['weights']['sha256']:
         raise ValueError('weights do not match the saved distance model')

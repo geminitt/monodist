@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from monodist import geometry
 
@@ -46,12 +47,31 @@ def test_features_are_camera_independent():
 
 
 def test_cut_flag_and_one_hot_classes():
+    """The "cut" set of the ensembles timed and scored on 2026-10-19 stays computable."""
+    names = geometry.FEATURE_SETS["cut"]
     box = np.array([[0.5, 100, 50, 200]] + [[100, 100, 200, 200]] * 4)
-    x = geometry.features(box, np.arange(5), F, CX, CY, W, H)
-    assert x.shape[1] == len(geometry.FEATURES)
-    assert x[:, geometry.FEATURES.index("cut")].tolist() == [1.0, 0.0, 0.0, 0.0, 0.0]
-    onehot = x[:, [geometry.FEATURES.index(c) for c in ("car", "van", "largevehicle", "pedestrian", "cyclist")]]
+    x = geometry.features(box, np.arange(5), F, CX, CY, W, H, names=names)
+    assert x.shape[1] == len(names)
+    assert x[:, names.index("cut")].tolist() == [1.0, 0.0, 0.0, 0.0, 0.0]
+    onehot = x[:, [names.index(c) for c in ("car", "van", "largevehicle", "pedestrian", "cyclist")]]
     assert onehot.tolist() == np.eye(5).tolist()
+
+
+def test_edge_flags_name_the_border_each_box_touches():
+    box = np.array([[0.5, 100, 50, 200], [1200, 100, W - 0.5, 200], [100, 1, 200, 200], [100, 100, 200, H - 1],
+                    [100, 100, 200, 200]])
+    x = geometry.features(box, np.zeros(5, int), F, CX, CY, W, H)
+    assert geometry.FEATURES == geometry.FEATURE_SETS["edge"] and x.shape[1] == len(geometry.FEATURES)
+    flags = x[:, [geometry.FEATURES.index(n) for n in ("cut_left", "cut_right", "cut_top", "cut_bottom")]]
+    assert flags.tolist() == np.vstack([np.eye(4), np.zeros(4)]).tolist()
+    cut = geometry.features(box, np.zeros(5, int), F, CX, CY, W, H, names=geometry.FEATURE_SETS["cut"])
+    assert np.array_equal(x[:, :-4], cut[:, :-1]) and np.array_equal(flags.max(axis=1), cut[:, -1])
+
+
+def test_unknown_feature_names_are_refused():
+    with pytest.raises(ValueError):
+        geometry.feature_names({"features": ["h/f", "cut"]})
+    assert geometry.feature_names({"features": list(geometry.FEATURE_SETS["cut"])}) == geometry.FEATURE_SETS["cut"]
 
 
 def test_range_from_depth():

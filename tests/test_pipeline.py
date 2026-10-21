@@ -12,6 +12,7 @@ def test_shared_postprocessing_uses_five_classes_thresholds_and_resets_tracking(
             p.zero_()
         model.net[-1].bias.fill_(np.log(10.))
     pipe.models = [model] * 5
+    pipe.meta = {"features": list(geometry.FEATURES)}
     pipe.conf = np.array([0.5, 0.5, 0.5, 0.5, 0.3])
     pipe.temporal_settings = {"meas_rel": 0.02, "accel": 1.}
     pipe.reset()
@@ -30,3 +31,15 @@ def test_shared_postprocessing_uses_five_classes_thresholds_and_resets_tracking(
     monkeypatch.setattr(pipeline.detect, "predict_images", lambda *args: calls.append(args) or [raw])
     out = pipe(["image"], (700., 600., 180.))
     assert calls[0][3] == 0.3 and out[0]["cls"].tolist() == [0, 4]
+
+
+def test_distances_use_the_feature_set_the_ensemble_was_trained_on():
+    """An ensemble saved with the one-flag "cut" features keeps working after the default changed."""
+    names = geometry.FEATURE_SETS["cut"]
+    pipe = pipeline.Pipeline.__new__(pipeline.Pipeline)
+    model = mlp.DistanceMLP(len(names))
+    pipe.models, pipe.meta = [model] * 5, {"features": list(names)}
+    box = np.array([[100., 100., 120., 140.]])
+    z, _ = pipe.distances(box, np.array([0]), (700., 600., 180.), (375, 1242))
+    x = geometry.features(box, np.array([0]), 700., 600., 180., 1242, 375, names=names)
+    assert np.allclose(z, mlp.predict([model] * 5, x))
