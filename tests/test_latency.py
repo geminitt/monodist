@@ -56,3 +56,14 @@ def test_timing_from_other_hardware_is_not_reused(tmp_path, monkeypatch):
     monkeypatch.setattr(latency, "hardware_identity", lambda: {"gpus": []})
     with pytest.raises(SystemExit, match="another configuration"):
         latency.main(argv)
+
+
+def test_stage_statistics_keep_every_frame_and_the_tail():
+    rounds, frames = 2, 50
+    records = [{s: (100.0 if i == 7 else 0.010 + 0.0001 * i) for s in latency.STAGES} for i in range(rounds * frames)]
+    stats = latency.stage_stats(records, rounds, frames)["total"]
+    assert len(stats["per_frame_ms"]) == rounds * frames and stats["per_frame_ms"][7] == 1e5
+    assert stats["max_ms"] == 1e5
+    p99, low, high = stats["p99_ms"]
+    assert stats["p90_ms"] <= p99 <= stats["max_ms"] and low <= p99 <= high
+    assert len(stats["round_medians_ms"]) == rounds

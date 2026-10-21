@@ -121,11 +121,26 @@ def run(weights, root, seq, frames, rounds, warmup, imgsz, half, pipelined=False
            "includes_tracking_and_ttc": True,
            "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
            "frames": frames, "rounds": rounds, "fps_per_round": [frames / w for w in wall]}
+    out.update(stage_stats(records, rounds, frames))
+    return out
+
+
+def bootstrap_percentile(v, q, n=2000, seed=0):
+    """Percentile q of v with a 95% bootstrap interval over frames: [value, low, high]."""
+    rng = np.random.default_rng(seed)
+    qs = np.percentile(v[rng.integers(0, len(v), (n, len(v)))], q, axis=1)
+    return [float(np.percentile(v, q)), *np.percentile(qs, [2.5, 97.5]).tolist()]
+
+
+def stage_stats(records, rounds, frames):
+    """Per stage: median, p90, p99 (tail latency against a deadline), max and every frame's time, in ms."""
+    out = {}
     for s in STAGES:
         v = np.array([r[s] for r in records]) * 1e3
         per_round = v.reshape(rounds, frames)
         out[s] = {"median_ms": bootstrap_median(v), "p90_ms": float(np.percentile(v, 90)),
-                  "round_medians_ms": np.median(per_round, axis=1).tolist()}
+                  "p99_ms": bootstrap_percentile(v, 99), "max_ms": float(v.max()),
+                  "round_medians_ms": np.median(per_round, axis=1).tolist(), "per_frame_ms": v.tolist()}
     return out
 
 
