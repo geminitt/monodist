@@ -134,8 +134,17 @@ def test_failing_check_gives_exit_code_1(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path)])
     assert verify.main() == 1  # every other job is missing
     monkeypatch.setattr(sys, "argv", ["verify.py", "--commit", "abc123", "--dir", str(tmp_path), "--jobs", "coco"])
-    monkeypatch.setattr(verify, "expected_jobs", lambda: {"coco": ["0000"]})
+    monkeypatch.setattr(verify, "expected_jobs", lambda *_: {"coco": ["0000"]})
     assert verify.main() == 0
+
+
+def test_check_follows_the_configs_the_kernel_ran(tmp_path):
+    jobs = verify.expected_jobs(["b_dontcare_masked"])
+    assert set(jobs) == {"final_b_dontcare_masked", "f0_b_dontcare_masked", "f1_b_dontcare_masked",
+                         "f2_b_dontcare_masked", "coco"}
+    write_output(tmp_path, jobs)
+    assert verify.check(tmp_path, "abc123", "full", configs=["b_dontcare_masked"]) == []
+    assert any("final_a" in p for p in verify.check(tmp_path, "abc123", "full"))  # the default expects a and b
 
 
 def test_download_retries_a_failed_cli_call_and_reports_it(tmp_path, monkeypatch, capsys):

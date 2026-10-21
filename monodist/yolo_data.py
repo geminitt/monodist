@@ -2,9 +2,16 @@
 
 Class ids follow kitti.CLASSES: 0 = Car, 1 = Van, 2 = LargeVehicle (Truck, Tram), 3 = Pedestrian (Pedestrian,
 Person), 4 = Cyclist. Misc and DontCare stay unlabeled. Images are symlinked, not copied.
+
+With masked=<dir>, each image with a DontCare region is replaced by a copy in which the DontCare pixels are
+filled with gray, except pixels inside any other labeled box. KITTI marks objects it did not label (mostly far
+or crowded ones) as DontCare; unmasked, training treats them as background, although evaluation ignores them.
+Detection and evaluation always use the original images.
 """
 import argparse
+import math
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +33,51 @@ def yolo_lines(boxes, classes, w, h):
     return lines
 
 
-def build(root, out, split=None, splits=("train", "val", "test"), frames=None, only=None):
+FILL = 114  # the gray Ultralytics pads letterboxed images with
+
+
+def dontcare_mask(boxes, types, w, h):
+    """Pixels to fill in one frame: inside a DontCare box and outside every other labeled box (Misc included)."""
+    mask = np.zeros((h, w), bool)
+
+    def pixels(b):  # the pixels a box touches, clipped to the image
+        x1, y1 = max(0, math.floor(b[0])), max(0, math.floor(b[1]))
+        return slice(y1, max(y1, min(h, math.ceil(b[3])))), slice(x1, max(x1, min(w, math.ceil(b[2]))))
+
+    for b in boxes[types == "DontCare"]:
+        mask[pixels(b)] = True
+    for b in boxes[types != "DontCare"]:
+        mask[pixels(b)] = False
+    return mask
+
+
+def masked_image(root, seq, fr, lab, masked):
+    """Path of the frame's image to train on: the masked copy in masked/ (written once), or the original."""
+    src = kitti.image_path(root, seq, fr)
+    m = lab["frame"] == fr
+    if not (lab["type"][m] == "DontCare").any():
+        return Path(src).resolve()
+    dst = Path(masked) / f"{seq}_{fr:06d}.png"
+    if not dst.exists():
+        img = np.array(Image.open(src).convert("RGB"))
+        img[dontcare_mask(lab["box"][m], lab["type"][m], img.shape[1], img.shape[0])] = FILL
+        tmp = dst.with_name(dst.stem + ".part.png")  # a cut write never leaves a file under the final name
+        Image.fromarray(img).save(tmp, compress_level=1)
+        tmp.rename(dst)
+    return dst.resolve()
+
+
+def mask_images(root, seqs, masked, frames=None, workers=None):
+    """Write the masked copies of every frame of seqs in parallel; returns how many images now exist there."""
+    Path(masked).mkdir(parents=True, exist_ok=True)
+    work = [(seq, fr, lab) for seq in seqs for lab in [kitti.load_labels(root, seq)]
+            for fr in range(frames or kitti.FRAMES[seq])]
+    with ThreadPoolExecutor(workers or os.cpu_count()) as pool:
+        list(pool.map(lambda job: masked_image(root, *job, masked), work))
+    return sum(1 for p in Path(masked).glob("*.png") if not p.name.endswith(".part.png"))
+
+
+def build(root, out, split=None, splits=("train", "val", "test"), frames=None, only=None, masked=None):
     split = split or kitti.SPLIT
     out = Path(out)
     for part in splits:
@@ -41,8 +92,11 @@ def build(root, out, split=None, splits=("train", "val", "test"), frames=None, o
                 src = kitti.image_path(root, seq, fr)
                 dst = out / "images" / part / f"{name}.png"
                 in_frame = lab["frame"] == fr
+                target = masked_image(root, seq, fr, lab, masked) if masked else Path(src).resolve()
+                if dst.is_symlink() and dst.resolve() != target:  # left by a build with the other masking
+                    dst.unlink()
                 if not dst.exists():
-                    os.symlink(Path(src).resolve(), dst)
+                    os.symlink(target, dst)
                 m = in_frame & (groups >= 0)
                 (out / "labels" / part / f"{name}.txt").write_text("\n".join(yolo_lines(lab["box"][m], groups[m], w, h)))
     names = "".join(f"  {i}: {c}\n" for i, c in enumerate(kitti.CLASSES))

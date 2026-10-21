@@ -9,6 +9,8 @@ Configurations compared on val in the cross-validation (see kaggle/cv), the two 
 two-class study:
   a  defaults (optimizer "auto")
   b  a with a lower learning rate (AdamW, lr0 0.0005)
+Stage 12 of the accuracy target adds:
+  b_dontcare_masked  b trained on images with the DontCare regions filled with gray (monodist.yolo_data)
 """
 import argparse
 from pathlib import Path
@@ -16,6 +18,7 @@ from pathlib import Path
 CONFIGS = {
     "a": {},
     "b": {"train": {"optimizer": "AdamW", "lr0": 0.0005}},
+    "b_dontcare_masked": {"train": {"optimizer": "AdamW", "lr0": 0.0005}, "dontcare_masked": True},
 }
 
 

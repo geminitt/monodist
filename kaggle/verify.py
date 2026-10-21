@@ -30,7 +30,7 @@ DOWNLOAD_TRIES = 3
 # What Kaggle CLI 2.2.3 printed (exit 1) on 2026-10-13 for a kernel that does not exist or was deleted
 NOT_FOUND = "Permission 'kernels.get' was denied"
 DET_KEYS = {"frame", "box", "score", "cls", "image_hw"}
-CONFIGS = ("a", "b")
+CONFIGS = ("a", "b")  # the train kernel's default; --configs for a run pushed with other CONFIGS
 
 
 def kaggle(*args, timeout=TIMEOUT):
@@ -53,10 +53,10 @@ def status(slug):
     return lines[-1] if lines else None
 
 
-def expected_jobs():
+def expected_jobs(configs=CONFIGS):
     """Job name -> sequences it detects, as kaggle/train/run.py defines them."""
-    jobs = {f"final_{c}": kitti.SEQUENCES for c in CONFIGS}
-    jobs.update({f"f{k}_{c}": kitti.DEVELOPMENT for c in CONFIGS for k in range(3)})
+    jobs = {f"final_{c}": kitti.SEQUENCES for c in configs}
+    jobs.update({f"f{k}_{c}": kitti.DEVELOPMENT for c in configs for k in range(3)})
     jobs["coco"] = kitti.SEQUENCES
     return jobs
 
@@ -85,7 +85,7 @@ def read_log(folder):
     return rows
 
 
-def check(folder, commit, mode, jobs=None):
+def check(folder, commit, mode, jobs=None, configs=CONFIGS):
     """A list of problems (empty when the output is complete and consistent)."""
     folder = Path(folder)
     problems = []
@@ -99,7 +99,7 @@ def check(folder, commit, mode, jobs=None):
     elif end[-1].get("failed"):
         problems.append(f"log: failed jobs {end[-1]['failed']}")
     frames = 20 if mode == "smoke" else None
-    for job, seqs in expected_jobs().items():
+    for job, seqs in expected_jobs(configs).items():
         if jobs and job not in jobs:
             continue
         best = folder / "runs" / job / "weights" / "best.pt"
@@ -129,6 +129,7 @@ def main():
     ap.add_argument("--mode", default="full", choices=("smoke", "full"))
     ap.add_argument("--dir", default=None, help="downloaded output (default runs/kaggle/train/<mode>)")
     ap.add_argument("--jobs", nargs="*", default=None)
+    ap.add_argument("--configs", nargs="+", default=list(CONFIGS), help="the CONFIGS the train kernel ran")
     ap.add_argument("--download", action="store_true", help="check the kernel's status and download its output first")
     args = ap.parse_args()
     folder = Path(args.dir) if args.dir else OUT / args.mode
@@ -149,7 +150,7 @@ def main():
             time.sleep(30 * 2 ** k)
         else:
             return 1
-    problems = check(folder, args.commit, args.mode, args.jobs)
+    problems = check(folder, args.commit, args.mode, args.jobs, args.configs)
     for p in problems:
         print("PROBLEM", p)
     print(f"{folder}: {'complete' if not problems else f'{len(problems)} problems'}")

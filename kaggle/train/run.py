@@ -5,7 +5,7 @@
 MODE = "smoke"
 COMMIT = "main"
 JOBS = None  # e.g. ["f0_a", "coco"]; None runs every job
-CONFIGS = ["a", "b"]
+CONFIGS = ["a", "b"]  # keys of monodist.finetune.CONFIGS
 
 # <common.py>
 
@@ -17,7 +17,7 @@ import traceback
 
 root = setup(COMMIT)
 log("train", step="setup", commit=COMMIT, mode=MODE)  # the verification of the outputs checks this commit
-from monodist import kitti, yolo_data  # noqa: E402
+from monodist import finetune, kitti, yolo_data  # noqa: E402
 
 smoke = MODE == "smoke"
 if LOCAL:  # only one sequence has images on the local machine
@@ -37,8 +37,15 @@ devices = [str(i) for i in range(torch.cuda.device_count())] or ["cpu"]
 mem = psutil.virtual_memory()
 if LOCAL:
     devices = devices[:1] * 2  # two queues on the one local GPU, as on Kaggle's two
+MASKED = Path("/tmp/masked_dontcare")  # one set of masked training images, shared by every masked job
+masked_seqs = sorted({q for _, part, _, cfg in jobs if cfg and finetune.CONFIGS[cfg].get("dontcare_masked")
+                      for p in ("train", "val") for q in part[p]})
+# Masked PNG copies (compress_level 1) took 1.06 MiB per frame on sequence 0012 (2026-10-21); 2x is the margin.
+masked_need = 2 * 1.06 * 2**20 * sum(20 if smoke else kitti.FRAMES[q] for q in masked_seqs)
+disk_free = shutil.disk_usage("/tmp").free
 log("train", step="preflight", devices=devices, jobs=[j[0] for j in jobs],
     ram_total_gib=round(mem.total / 2**30, 1), ram_available_gib=round(mem.available / 2**30, 1),
+    tmp_free_gib=round(disk_free / 2**30, 1), masked_need_gib=round(masked_need / 2**30, 1),
     gpu_mem_used_mib=[torch.cuda.mem_get_info(i)[1] // 2**20 - torch.cuda.mem_get_info(i)[0] // 2**20
                       for i in range(torch.cuda.device_count())])
 coco_pt = Path("/tmp/yolo26n.pt")
@@ -49,6 +56,13 @@ if not coco_pt.exists():
         from ultralytics import YOLO
         os.chdir("/tmp")
         YOLO("yolo26n.pt")  # one download before the parallel jobs
+if masked_seqs:
+    if disk_free < masked_need:
+        raise SystemExit(f"/tmp has {disk_free / 2**30:.1f} GiB free, masked images need {masked_need / 2**30:.1f} GiB")
+    t = time.time()
+    n = yolo_data.mask_images(root, masked_seqs, MASKED, frames=20 if smoke else None)
+    log("train", step="mask", sequences=masked_seqs, images=n, seconds=round(time.time() - t, 1),
+        tmp_free_gib=round(shutil.disk_usage("/tmp").free / 2**30, 1))
 batch = 2 if LOCAL else 16
 lock = threading.Lock()
 
@@ -90,7 +104,8 @@ def run_job(name, part, seqs, cfg, device):
         t = time.time()
         with lock:  # yolo_data writes the dataset once per job; keep its file creation serialized
             data = yolo_data.build(root, f"/tmp/yolo_{name}", split=part, splits=("train", "val"),
-                                   frames=20 if smoke else None)
+                                   frames=20 if smoke else None,
+                                   masked=MASKED if finetune.CONFIGS[cfg].get("dontcare_masked") else None)
         n_frames = sum(20 if smoke else kitti.FRAMES[q] for p in ("train", "val") for q in part[p])
         cache, held = reserve_cache(n_frames)
         args = f"--data {data} --weights {coco_pt} --project {WORK}/runs --name {name} --config {cfg} --batch {batch}"
