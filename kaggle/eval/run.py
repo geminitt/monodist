@@ -1,11 +1,13 @@
 # Rebuilt quality pipeline: development calibration, then the saved ensemble/tracker/TTC.
-# Attach the complete train output from COMMIT. No held-out test labels are evaluated here.
+# Attach the complete train output of COMMIT or of an ancestor commit. No held-out test labels are evaluated here.
 MODE = "smoke"
 COMMIT = "main"
 TRAIN_INPUT = None
+CONFIGS = ["a", "b"]  # final-configuration candidates in the train output, chosen on mean validation mAP
 
 # <common.py>
 
+import subprocess
 import traceback
 
 root = setup(COMMIT)
@@ -24,13 +26,16 @@ def input_for(job, head):
 training = input_for("coco", "nms")
 if not LOCAL:
     records = [json.loads(line) for line in (training / "train.jsonl").read_text().splitlines()]
-    assert any(r.get("step") == "setup" and r.get("commit") == COMMIT for r in records), "train source commit differs"
+    train_commit = next(r["commit"] for r in records if r.get("step") == "setup")
+    # The detections may come from an earlier commit (e.g. a timing added later); never from an unrelated one.
+    ancestor = subprocess.run(["git", "-C", str(SRC), "merge-base", "--is-ancestor", train_commit, COMMIT])
+    assert ancestor.returncode == 0, f"train commit {train_commit} is not an ancestor of {COMMIT}"
     assert any(r.get("step") == "end" and r.get("failed") == [] for r in records), "training is incomplete"
-    table, _ = crossval.select(root, training / "det", ["a", "b"])
-    chosen = max(("a", "b"), key=lambda c: sum(table[k][c] for k in table) / len(table))
+    table, _ = crossval.select(root, training / "det", CONFIGS)
+    chosen = max(CONFIGS, key=lambda c: sum(table[k][c] for k in table) / len(table))
 else:
-    chosen = "b"  # local procedure check uses the available selected-model artifacts
-log("eval", step="setup", commit=COMMIT, mode=MODE, final_configuration=chosen,
+    train_commit, chosen = None, "b"  # local procedure check uses the available selected-model artifacts
+log("eval", step="setup", commit=COMMIT, train_commit=train_commit, mode=MODE, final_configuration=chosen,
     protocol="sequential configurations on GPU 0; ensemble, thresholds, tracker and TTC included")
 
 configs = [("coco_nms", "coco", "nms"), ("finetuned_nms", f"final_{chosen}", "nms"),
