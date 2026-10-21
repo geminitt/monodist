@@ -1,4 +1,9 @@
-"""Score the fixed timed ensembles using frozen e10d9f3 library functions; never fit or select."""
+"""Score the fixed timed ensembles using frozen c7124a9 library functions; never fit or select.
+
+Edge-flag ensembles of eval version 10. Grouped and class-agnostic recall and precision are matched on kept
+detections only, so a discarded detection cannot take an object from a kept one (the 2026-10-19 driver matched
+all detections first; runs/analysis/final-test-edge-flags-2026-10-22/reproduce_defect.log).
+"""
 import argparse
 import hashlib
 import importlib.metadata
@@ -9,10 +14,10 @@ import sys
 import time
 
 ROOT = Path('/home/geminitt/projects/monodist')
-SOURCE = ROOT / 'runs/source/frozen-source-2026-10-19'
+SOURCE = ROOT / 'runs/source/edge-flags-2026-10-22'
 TRAIN = ROOT / 'runs/kaggle/train/frozen-source-2026-10-19'
-EVAL = ROOT / 'runs/kaggle/eval/frozen-source-2026-10-19'
-COMMIT = 'e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9'
+EVAL = ROOT / 'runs/kaggle/eval/edge-flags-2026-10-22'
+COMMIT = 'c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2'
 sys.path.insert(0, str(SOURCE))
 import numpy as np
 from monodist import analysis, evaluate, geometry, kitti, match, metrics, mlp, temporal
@@ -91,14 +96,21 @@ def score(name, seqs, out, boot):
             'recall_by_distance': match.recall_by_distance(det, gt, status, gt_idx, thresholds, metrics.BINS),
             **evaluate.summarize(rows, boot)}
     gd, gg = match.regroup(det, gt, kitti.GROUP_OF)
-    gs, gi = match.evaluate(gd, gg)
+    gs, _ = match.evaluate(gd, gg)
     info['detection_groups'] = match.detection_report(gd, gg, gs, names=kitti.GROUPS)
-    info['recall_by_distance_groups'] = match.recall_by_distance(gd, gg, gs, gi, thresholds, metrics.BINS, names=kitti.GROUPS)
     ad, ag = match.agnostic(det, gt)
-    ast, ai = match.evaluate(ad, ag)
+    ast, _ = match.evaluate(ad, ag)
     info['detection_agnostic'] = match.detection_report(ad, ag, ast, names=('object',))
-    info['recall_by_distance_agnostic'] = match.recall_by_distance(ad, ag, ast, ai, thresholds, metrics.BINS, names=('object',))['object']
-    info['precision_by_predicted_distance'] = evaluate.precision_by_distance(kept, ast[keep], predicted['z'][keep], metrics.BINS)
+    # Operating-point recall and precision: classes in one group have different thresholds, so matching is
+    # repeated on the kept detections only (as evaluate.predict does since ff97bed).
+    every = np.zeros(int(keep.sum()))
+    gd, gg = match.regroup(kept, gt, kitti.GROUP_OF)
+    gs, gi = match.evaluate(gd, gg, thresholds=[0.5])
+    info['recall_by_distance_groups'] = match.recall_by_distance(gd, gg, gs, gi, every, metrics.BINS, names=kitti.GROUPS)
+    ad, ag = match.agnostic(kept, gt)
+    kst, ki = match.evaluate(ad, ag, thresholds=[0.5])
+    info['recall_by_distance_agnostic'] = match.recall_by_distance(ad, ag, kst, ki, every, metrics.BINS, names=('object',))['object']
+    info['precision_by_predicted_distance'] = evaluate.precision_by_distance(kept, kst, predicted['z'][keep], metrics.BINS)
     obs = evaluate.observations(kept, gt, models, cam)
     assert np.allclose(obs['pred_mlp'], predicted['z'][keep], rtol=1e-5, atol=1e-5)
     obs['pred_mlp'] = predicted['z'][keep]

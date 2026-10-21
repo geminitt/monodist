@@ -38,7 +38,7 @@ The latter is throughput, not capture-to-output latency.
 | Detector | YOLO26n; COCO baseline or full KITTI fine-tune; NMS and NMS-free heads |
 | Classes | Car, Van, LargeVehicle (Truck/Tram), Pedestrian (Pedestrian/Person), Cyclist |
 | Reporting groups | Vehicle, Person, Cyclist; also class-agnostic detection |
-| Distance | Five MLPs trained from scratch; 11 box/class features, hidden layers 64/64, averaged in log depth |
+| Distance | Five MLPs trained from scratch; 14 features (5 box angles, 5 class indicators, a flag per cut image border), hidden layers 64/64, averaged in log depth |
 | Geometry baselines | Known size, $Z = fH/h$; ground plane, $Z = f h_\mathrm{cam}/(v_2-c_y)$, with known-size fallback |
 | Temporal output | Automatic same-class IoU association; causal constant-velocity Kalman filter on depth and depth rate |
 | TTC | Optical-axis depth divided by closing speed; infinite when not approaching |
@@ -151,6 +151,9 @@ No numerical superiority over these systems is claimed under unmatched protocols
 ## Limits
 
 - One detector training run per configuration/fold; fold spread does not isolate seed variation.
+- TEST was scored three times for fine-tuned NMS (2026-10-19 with one shared border flag; 2026-10-22 with
+  per-border flags, then after a matching repair) and twice for the other pipelines. The per-border flags
+  were chosen on development out-of-fold results; no TEST score selected them.
 - Distance errors exclude misses and false-positive distances. Van/Cyclist coverage differs strongly from COCO.
 - Long tracks influence frame-weighted means. Track resampling does not model every dependence across
   objects or across the fold training runs.
@@ -233,8 +236,8 @@ inference wall time. This demo does not replace the frozen quality/latency measu
 
 ## Provenance and reproduction
 
-Measurement library source is fixed at **`{source}`**. Training version 4, development analysis and timing
-version 8 use that source. Final scoring calls those frozen library functions with the saved timed models;
+Measurement library source is fixed at **`{source}`**. Training version 4 (source `e10d9f3`) produced the
+detector weights and detections; development analysis, final calibration and timing version 10 use this source. Final scoring calls those frozen library functions with the saved timed models;
 its orchestration driver is recorded separately by SHA-256. Report-rendering changes do not refit models.
 
 [results/rebuild/MANIFEST.json](results/rebuild/MANIFEST.json) identifies source/input/model hashes,

@@ -7,17 +7,18 @@ import sys
 import numpy as np
 
 ROOT = Path('/home/geminitt/projects/monodist')
-SOURCE = ROOT / 'runs/source/frozen-source-2026-10-19'
-DEV = ROOT / 'runs/analysis/frozen-source-development-2026-10-19'
-FINAL = Path(__file__).resolve().parent
-TIMING = ROOT / 'runs/kaggle/eval/frozen-source-2026-10-19'
+SOURCE = ROOT / 'runs/source/edge-flags-2026-10-22'
+DEV = ROOT / 'runs/analysis/edge-flags-development-2026-10-22'
+RUN = Path(__file__).resolve().parent
+FINAL = RUN / 'test'
+TIMING = ROOT / 'runs/kaggle/eval/edge-flags-2026-10-22'
 OUT = ROOT / 'results/rebuild'
 sys.path.insert(0, str(SOURCE))
 from monodist import analysis, crossval, kitti, metrics
 
 load = lambda path: json.loads(path.read_text())
 assert load(FINAL / 'complete.json')['pipeline_test_evaluated']
-assert load(DEV / 'complete.json')['folds'] == 9
+assert load(DEV / 'complete.json')['folds'] == 9 and load(DEV / 'verification.json')['commit'] == load(TIMING / 'verification.json')['commit']
 assert load(TIMING / 'verification.json')['target_t4_measured']
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -65,23 +66,26 @@ for development_name,name in names.items():
                             'temporal':load(FINAL/name/'temporal.json')}
     for suffix in ('','_pipelined'):
         timing = load(TIMING/'latency'/f'{name}{suffix}.json')
-        summary['latency'][name+suffix] = {key:value for key,value in timing.items() if key!='signature'}
+        # Per-frame times stay in the timing output; the package keeps the statistics, p99 included.
+        summary['latency'][name+suffix] = {key:({k:v for k,v in value.items() if k!='per_frame_ms'} if isinstance(value,dict) else value)
+                                           for key,value in timing.items() if key!='signature'}
     print('packaged',name,flush=True)
 for name in ('finetuned_nms','finetuned_e2e'):
     summary['comparisons'][f'development.{name}'] = load(DEV/f'compare-coco-vs-{name}.json')
     summary['comparisons'][f'test.{name}'] = load(FINAL/f'compare-coco-vs-{name}.json')
 analysis.write_json(OUT/'summary.json',analysis.clean_json(summary))
-for source, dest in ((FINAL/'freeze.json','freeze.json'),(FINAL/'manifest.json','final-manifest.json'),
+for source, dest in ((RUN/'freeze.json','freeze.json'),(FINAL/'manifest.json','final-manifest.json'),
                      (TIMING/'verification.json','timing-verification.json'),(DEV/'verification.json','development-verification.json')):
     shutil.copy2(source,OUT/dest)
 archive = OUT/'drivers'
 archive.mkdir(exist_ok=True)
 for name in ('evaluate_final.py','prepare_report.py'):
-    shutil.copy2(FINAL/name,archive/name)
+    shutil.copy2(RUN/name,archive/name)
 manifest = {'measurement_source_commit':summary['source_commit'],'final_configuration':'b',
             'train_kernel':{'id':'spritker/monodist-train','version':4},
-            'timing_kernel':{'id':'spritker/monodist-eval','version':8},
-            'final_freeze':load(FINAL/'freeze.json'),'development_manifest':load(DEV/'manifest.json'),
+            'timing_kernel':{'id':'spritker/monodist-eval','version':10},
+            'distance_features':'edge','test_scoring_count':load(RUN/'freeze.json')['test_scoring_count'],
+            'final_freeze':load(RUN/'freeze.json'),'development_manifest':load(DEV/'manifest.json'),
             'timing_hardware_environment':load(TIMING/'verification.json'),
             'limitations':['driver paths identify the original workspace; adapt paths to reproduce elsewhere',
                            'large model/prediction artifacts remain in Kaggle output and local runs; no new public release is claimed'],

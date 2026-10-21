@@ -90,10 +90,12 @@ def tables():
     latency = []
     for name,label in DETECTORS.items():
         serial, overlap = data['latency'][name], data['latency'][name+'_pipelined']
+        p99 = serial['total']['p99_ms']  # per-frame tail with a 95% bootstrap interval over frames
         latency.append([label, *[f"{serial[key]['median_ms'][0]:.2f}" for key in ('decode','inference','distance','total')],
+            f"{p99[0]:.2f} [{p99[1]:.2f}, {p99[2]:.2f}]",
             f"{statistics.median(serial['fps_per_round']):.1f}", f"{statistics.median(overlap['fps_per_round']):.1f}"])
     out['latency'] = table(['Pipeline','Decode (ms)','Detector forward (ms)','Distance/tracking/TTC (ms)',
-                           'Serial total (ms)','Serial FPS','Decode-overlapped FPS'], latency)
+                           'Serial total (ms)','Serial p99 [95% CI] (ms)','Serial FPS','Decode-overlapped FPS'], latency)
     comparisons = []
     for key,value in data['comparisons'].items():
         partition,name = key.split('.')

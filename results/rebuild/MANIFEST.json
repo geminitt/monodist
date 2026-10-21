@@ -1,5 +1,5 @@
 {
- "measurement_source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+ "measurement_source_commit": "c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2",
  "final_configuration": "b",
  "train_kernel": {
   "id": "spritker/monodist-train",
@@ -7,12 +7,19 @@
  },
  "timing_kernel": {
   "id": "spritker/monodist-eval",
-  "version": 8
+  "version": 10
+ },
+ "distance_features": "edge",
+ "test_scoring_count": {
+  "finetuned_nms": 3,
+  "coco_nms": 2,
+  "finetuned_e2e": 2
  },
  "final_freeze": {
-  "source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
-  "scoring_driver_sha256": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314",
+  "source_commit": "c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2",
+  "scoring_driver_sha256": "150e97a5a698ea5eb8eff216495d1ebc723366ab3147da5c6d1e7f22e0cad194",
   "final_configuration": "b",
+  "distance_features": "edge",
   "test_sequences": [
    "0003",
    "0007",
@@ -22,7 +29,7 @@
   ],
   "models": {
    "coco_nms": {
-    "distance_sha256": "255ca3b4cc3ed4dcde601d6f2dab099a1908af230dce855614e7168a5b676173",
+    "distance_sha256": "bf366a66e5f7ca9f8d95032b3740e1e33756b9d441f1f7ba96dc5f7809560888",
     "thresholds": {
      "Car": 0.34000012278556824,
      "Van": 1.0,
@@ -33,10 +40,26 @@
     "temporal": {
      "meas_rel": 0.05,
      "accel": 4.0
-    }
+    },
+    "features": [
+     "h/f",
+     "w/f",
+     "(v2-cy)/f",
+     "(v1-cy)/f",
+     "(u-cx)/f",
+     "car",
+     "van",
+     "largevehicle",
+     "pedestrian",
+     "cyclist",
+     "cut_left",
+     "cut_right",
+     "cut_top",
+     "cut_bottom"
+    ]
    },
    "finetuned_nms": {
-    "distance_sha256": "de6e1ee53d34f98c29eaab90290b0dd6d4dd120805f0200ff06e190f92469c94",
+    "distance_sha256": "484f7c28781cd3f2e1e932371885f3ed2e098e4d736c2cb1fbfc6a0e7087165f",
     "thresholds": {
      "Car": 0.2543703019618988,
      "Van": 0.23012670874595642,
@@ -47,10 +70,26 @@
     "temporal": {
      "meas_rel": 0.02,
      "accel": 1.0
-    }
+    },
+    "features": [
+     "h/f",
+     "w/f",
+     "(v2-cy)/f",
+     "(v1-cy)/f",
+     "(u-cx)/f",
+     "car",
+     "van",
+     "largevehicle",
+     "pedestrian",
+     "cyclist",
+     "cut_left",
+     "cut_right",
+     "cut_top",
+     "cut_bottom"
+    ]
    },
    "finetuned_e2e": {
-    "distance_sha256": "94b3bf0c2fbaa6e7a8b890c8401ea40f83da36bc9a24ea3fe5a8fcdb6eee2f0c",
+    "distance_sha256": "d83c485c38e70cd39f051bc5b953c300ecb970543ba7213986fc0b661e312a3a",
     "thresholds": {
      "Car": 0.207401841878891,
      "Van": 0.16455304622650146,
@@ -61,91 +100,121 @@
     "temporal": {
      "meas_rel": 0.02,
      "accel": 0.25
-    }
+    },
+    "features": [
+     "h/f",
+     "w/f",
+     "(v2-cy)/f",
+     "(v1-cy)/f",
+     "(u-cx)/f",
+     "car",
+     "van",
+     "largevehicle",
+     "pedestrian",
+     "cyclist",
+     "cut_left",
+     "cut_right",
+     "cut_top",
+     "cut_bottom"
+    ]
    }
   },
   "software_tests_may_use_TEST": true,
   "pipeline_choices_fixed_before_final_scoring": true,
+  "test_scoring_count": {
+   "finetuned_nms": 3,
+   "coco_nms": 2,
+   "finetuned_e2e": 2
+  },
+  "note": "written 2026-10-22 after TEST scoring started; the models are the verified eval version 10 outputs, fixed before scoring and checked by hash",
   "preflight_complete": {
-   "signature": "50626fda596ee67ab5a39210c60dd8f53cb670c6266390e73b5de5c51c2fbb26",
+   "signature": "3b0f9a90ee631d2b39e11139ef668bb78a562f5855de47a358752abb18cf6b90",
    "configurations": 3,
    "pipeline_test_evaluated": false
   }
  },
  "development_manifest": {
-  "signature": "7f55d7741128269753e835abd09c2f01b9774610bf58b918f783cc4c08bd9dd7",
-  "commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
+  "signature": "6cc998944a1cc608a741bf7540618b2edc0d0dcbf569b7a47d65a1af52204a02",
+  "commit": "c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2",
   "files": {
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/analysis.py": "303a917523cc23013725fa470833edc06db05ee457c799d63fb6df203beb9ed1",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/calibrate.py": "c3e87bc939a901d8f869e50805c0d711c9adac84953d0e09ce944c777eb5d699",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/crossval.py": "d44f36d7dd20c03f190f5de998b58b279055d852a3198c09cc1d7725cead512c",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/detect.py": "8733ba9998ed2960f581a099371b1f933349d30b0e97c0ff155ecf7519461124",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/evaluate.py": "ba942ed1fa90fb15ab691b0413cdabf19b4e326954e6ba7940d22425eece4750",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/finetune.py": "0576526666abe5485badfa48bd387a48b474d0372e687314b4d815ab56faa10d",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/geometry.py": "98f1916d1cb3e01d899f78a03a6090663eba2a18c75cac2062d068ad7c7235dd",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/kitti.py": "8cae5ebd40a4136244f2349d1aca8e7a520818137cb00d97e6df920c3aef925e",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/latency.py": "b3e83efd494fdc5d6d8a550441775a5b2ba9a4a303c596bc73c8752b64845ff9",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/match.py": "5bfe1efce4971f34ab8970f5d5e88c9c94b0ddd86d8657f3c6128d1cb9f3cbb0",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/metrics.py": "8a11e2298afc703adafa3caa02f34e8a056e9ba9f6ad02ddca5324a724e612f2",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/mlp.py": "b5aad8c86141f4aaca1ad2a6c5cc0ed303c4c136151cc0b02616f66009d7bffc",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/pipeline.py": "6b569fa53c77f31b07dc35f3427b6685b7d347caa1662e6dfa09bc2ab04376a7",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/profile_gpu.py": "a1b701917cb1d476cf43ff38928a086d5cb997a5836a2015b7c3d0f2225f854e",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/report.py": "c78727769af6f3996e258946121113d7cf79efc869a9b0e0d4b4a2b0cf6c1cb0",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/temporal.py": "60403d0e939e2480013452802ec15ff1e6f7d8e84a17bba93d040374090dfcb7",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/monodist/yolo_data.py": "26abe102009fe850c8fd1d6b12bbc07f6cc7aedf92211dde5aed5cbfdf8f0508",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/conftest.py": "7819c50135e52d521c7d0f187951d1a47df7d58aef131dc983dff16a6e3c384f",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_analysis.py": "5922a3b28fe00e034b71fbc88e0c01478d15490e171cf6881ade11c8c1ad9d68",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_calibrate.py": "261da49eb871a1b12fdd1fbd75baeadd0820dede42b01b474d1fd77e4cb15267",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_crossval.py": "d1474116a0a14bd1a93a8a7108e966aaee81dadbf98fe8b31dd3b006934cf364",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_detect.py": "ce2534aa5eecba2e5c8246ffebaa114809b18215422dd1e926e53ec04c53722f",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_evaluate.py": "174d8359db0bf959e432a180afa0870821ab18b036da58cf58ecd66258faacbd",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_geometry.py": "c7a02db49cecf3962b11cbc8d17f1c8e7a79eee605654ddc0391822b70a70344",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_kaggle.py": "129087f823904909ce09e9efbedcebf7377c9252074b445a59f4d7602efc4003",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_kitti.py": "a750662181a1311f58e0756db546dcc86ec3d8f5d4bfec23bb25517766ef8e66",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_latency.py": "dfe14e9b126771f175589547d1a52cfe247e73e9b33aa3f223a69dcd99d30521",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_match.py": "91a1403ae4be65de9e59d60281fe56d12dfd00641b9488b64bb1968b5cf23e80",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_metrics.py": "d74d16cfa5ba47c97df03d3d23d0c67c9c7d85a6920db1e3049423d6aacd2324",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_mlp.py": "62da49a31db44e23a2afdfccdcb002b784e1d7e71606207d8057e0ec1e58bdd6",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_pipeline.py": "28c51679801a330e9218bb5a13dcf6b2fb0034f1e5acf8894f93e76e3ecf3f5f",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_report.py": "e41727eb5b7c631f89df878bad0baa78ea67fd2fd9b0f6473aa0d44ab17dae59",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_temporal.py": "b5eb0374e4e3d761c74298f018a26d3065dd7f96b92bf2aa1f8ecfa39490efa9",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/tests/test_yolo_data.py": "48861cd31e60beb9e91950c6fea6caffdad44c609953198967237a149d28228d",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pixi.lock": "d7b68f040cd975b3a75192a8639cfeb820fc7a86023063915e597e8850fc8d02",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pixi.toml": "27042fed4b635a35f88cd0b2e8c55a3591faa2b366befad3bf8cd08621b5a8c4",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/pyproject.toml": "1a3b257c2ceed99b0a16c4b2495b67e1e92f61c9d15ff90fff329fa8d19e78c6",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0000.txt": "97f772a27181dfc7ef51b3e64b86bd42e682753b6855fdc58d259ecbed501fd4",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0000.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0001.txt": "267c8158eba4581729f84ba971d7c35bb8a0bf1bd3443b7edb6e601cbc21d08a",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0001.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0002.txt": "ba5e11b8a27de653adba8d0641dc0abcb8e3e4d854eb391699748a568e1fe24d",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0002.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0004.txt": "ef85ef77e0769b1902a9e7af17688fba3366e2265157490aa0cf6bc702377757",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0004.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0005.txt": "69366a60b3b7636937bf7e78b91959ca9f239f05e3dcbd90737f1753bf06232e",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0005.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0006.txt": "9b712c3530e7383aa144881e40409426618fae9002d7bb51050dcd81925320df",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0006.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0008.txt": "6d67d1044f50e8cfdb4283f474191a9045bd166813beff4451ee668f542ff5b5",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0008.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0009.txt": "3bfe22ce430bdfb73923c4df2778879b3b637dfa00e8d5e4a2c42f0cfb97c953",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0009.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0010.txt": "d4a1862adb05c25c6a701dcdb28d79062666ad439407242631548dbff0f7bbf6",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0010.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0012.txt": "304d0bf651529249e1b3a997114376f7c74c9df815d1a7ecf5654fdf3c3552d6",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0012.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0013.txt": "29275f8a808298e4c816787bcc68d8cb891a1eeaf29e80081548af4493a41180",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0013.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0014.txt": "2410ee567142c11f4e0c62da47bc1ea3dafbb339eb50ce1e581a9b3b8bcb8d47",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0014.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0015.txt": "54787b567aa27c390c345b51e1b408ce0b07ec321b26496ee66a8cf05c2fa40c",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0015.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0018.txt": "02298e3cd13a77eb14b511aa66c8dd126680305f856bc4247fe2971b9598b0d8",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0018.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0019.txt": "721ac76b2353f019003c91d5de1b17ba87da966ce52437709af02fa6750ff125",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0019.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/label_02/0020.txt": "8e14201118adc5264ec228650715bcf5828a43abdf066cc2a02ac15982f23a2a",
-   "/home/geminitt/projects/monodist/runs/source/frozen-source-2026-10-19/data/kitti_tracking/training/calib/0020.txt": "ff301b07d1f5f4491366b2c09bbb624e23d0be411a50e0384659893793c84cc7",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/analysis.py": "303a917523cc23013725fa470833edc06db05ee457c799d63fb6df203beb9ed1",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/bundle.py": "9388d61a1b80ef370951f116550a5364973b528f2183b8142101b4ee3079817b",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/calibrate.py": "c3e87bc939a901d8f869e50805c0d711c9adac84953d0e09ce944c777eb5d699",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/crossval.py": "d44f36d7dd20c03f190f5de998b58b279055d852a3198c09cc1d7725cead512c",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/demo.py": "743be6a3420a509b22452f9c72e59f8364a02c77f77e287391d74ad0012cccd5",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/detect.py": "8733ba9998ed2960f581a099371b1f933349d30b0e97c0ff155ecf7519461124",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/evaluate.py": "94f05cfd8210b9c923f6216d43eaed5b5cbdf9d7f2491c20222ef5992a7bffd7",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/finetune.py": "01a6066211d27e1160f4b7708076ca68fca698da251465b39737ae1f4f9924f2",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/geometry.py": "e80f347500020eb1dba1af8f9ed774ed0d3285212ac97e31945aeb15f348fd5a",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/kitti.py": "8cae5ebd40a4136244f2349d1aca8e7a520818137cb00d97e6df920c3aef925e",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/latency.py": "d93d58d26cf784574fba670341a00e900ff070a7982addebe0ea31fcf4ffb960",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/match.py": "5bfe1efce4971f34ab8970f5d5e88c9c94b0ddd86d8657f3c6128d1cb9f3cbb0",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/metrics.py": "8a11e2298afc703adafa3caa02f34e8a056e9ba9f6ad02ddca5324a724e612f2",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/mlp.py": "b5aad8c86141f4aaca1ad2a6c5cc0ed303c4c136151cc0b02616f66009d7bffc",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/pipeline.py": "c0763d03572800940af0c5faa5192f2821267a067f21afa715f9d973f2d509f9",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/profile_gpu.py": "a1b701917cb1d476cf43ff38928a086d5cb997a5836a2015b7c3d0f2225f854e",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/report.py": "e0c6d4d6d0753ca5758154cf6c6eadc72cffcca235367db2cb098bb81f53029f",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/simulation.py": "eb29d59f252fe086e28ea0dfff33dbdc9cb6511217737cb66019f3d62d656ced",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/temporal.py": "60403d0e939e2480013452802ec15ff1e6f7d8e84a17bba93d040374090dfcb7",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/video.py": "32280500ab42a56cf1b9b247f5ba390e477261a93712e6e6446c5e3c77fcdc4c",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/monodist/yolo_data.py": "bf71dc6bce4f3838b95936e25f41a4d398904ec92af3767ed8e9a25ebbd20f84",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/conftest.py": "7819c50135e52d521c7d0f187951d1a47df7d58aef131dc983dff16a6e3c384f",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_analysis.py": "5922a3b28fe00e034b71fbc88e0c01478d15490e171cf6881ade11c8c1ad9d68",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_bundle.py": "b24864f4d4312dcf597075c9c8600bfe832a9783f762b6c14c46384a92815bcb",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_calibrate.py": "261da49eb871a1b12fdd1fbd75baeadd0820dede42b01b474d1fd77e4cb15267",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_crossval.py": "d1474116a0a14bd1a93a8a7108e966aaee81dadbf98fe8b31dd3b006934cf364",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_demo.py": "72be48a257dd3eafa7edfc7f6e76fa052af97424baefc78cf0db9d2d74e41f5c",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_detect.py": "ce2534aa5eecba2e5c8246ffebaa114809b18215422dd1e926e53ec04c53722f",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_evaluate.py": "994b70db64dc09da3ee06793fdd1a1221b240b53e3c9c52918f5d422543c0f09",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_geometry.py": "07ccc0bd081611f755339a15efc9ffa3a677083b5f907b414106594b125d6bb2",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_kaggle.py": "a6eff473338306b26ec1c3ad91029b21735a1efdfbe56c8a840c767551d619e1",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_kitti.py": "a750662181a1311f58e0756db546dcc86ec3d8f5d4bfec23bb25517766ef8e66",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_latency.py": "6a9545ee17d5117c215c8aaa0f36f37e9b71a830c74be945f786cb007b485520",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_match.py": "91a1403ae4be65de9e59d60281fe56d12dfd00641b9488b64bb1968b5cf23e80",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_metrics.py": "d74d16cfa5ba47c97df03d3d23d0c67c9c7d85a6920db1e3049423d6aacd2324",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_mlp.py": "62da49a31db44e23a2afdfccdcb002b784e1d7e71606207d8057e0ec1e58bdd6",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_pipeline.py": "97c6dd1fb8b4927eced3d991d7a30c79ab195e7a16386bd011484c4e22e1a6c5",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_report.py": "e41727eb5b7c631f89df878bad0baa78ea67fd2fd9b0f6473aa0d44ab17dae59",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_simulation.py": "1d0903048d0c27dca482a749f59234093bd1fc2a5a964d57f9ee9ca51b79856a",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_temporal.py": "b5eb0374e4e3d761c74298f018a26d3065dd7f96b92bf2aa1f8ecfa39490efa9",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_video.py": "f76258e16c1f84bbcb6133e563562d21c8190ec12c372ecc1f1d837c0399c79c",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/tests/test_yolo_data.py": "24312dc3ec3188992c18656d5d1454507f6fadb4852578b42b4380d54836e053",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/pixi.lock": "d7b68f040cd975b3a75192a8639cfeb820fc7a86023063915e597e8850fc8d02",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/pixi.toml": "27042fed4b635a35f88cd0b2e8c55a3591faa2b366befad3bf8cd08621b5a8c4",
+   "/home/geminitt/projects/monodist/runs/source/edge-flags-2026-10-22/pyproject.toml": "52bda96a2915880ad3387ec754fa0fad151eb6781f75a44c4fb5c58e44777832",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0000.txt": "97f772a27181dfc7ef51b3e64b86bd42e682753b6855fdc58d259ecbed501fd4",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0000.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0001.txt": "267c8158eba4581729f84ba971d7c35bb8a0bf1bd3443b7edb6e601cbc21d08a",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0001.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0002.txt": "ba5e11b8a27de653adba8d0641dc0abcb8e3e4d854eb391699748a568e1fe24d",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0002.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0004.txt": "ef85ef77e0769b1902a9e7af17688fba3366e2265157490aa0cf6bc702377757",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0004.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0005.txt": "69366a60b3b7636937bf7e78b91959ca9f239f05e3dcbd90737f1753bf06232e",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0005.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0006.txt": "9b712c3530e7383aa144881e40409426618fae9002d7bb51050dcd81925320df",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0006.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0008.txt": "6d67d1044f50e8cfdb4283f474191a9045bd166813beff4451ee668f542ff5b5",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0008.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0009.txt": "3bfe22ce430bdfb73923c4df2778879b3b637dfa00e8d5e4a2c42f0cfb97c953",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0009.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0010.txt": "d4a1862adb05c25c6a701dcdb28d79062666ad439407242631548dbff0f7bbf6",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0010.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0012.txt": "304d0bf651529249e1b3a997114376f7c74c9df815d1a7ecf5654fdf3c3552d6",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0012.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0013.txt": "29275f8a808298e4c816787bcc68d8cb891a1eeaf29e80081548af4493a41180",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0013.txt": "56a59ba57b98682de8d4d97de940dab6b092deddc0e275b41385cf8ac2160547",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0014.txt": "2410ee567142c11f4e0c62da47bc1ea3dafbb339eb50ce1e581a9b3b8bcb8d47",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0014.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0015.txt": "54787b567aa27c390c345b51e1b408ce0b07ec321b26496ee66a8cf05c2fa40c",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0015.txt": "464f634100ba5a38f8c82d2f939f854af715182ec4c44733d89e1d1ea3b826bd",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0018.txt": "02298e3cd13a77eb14b511aa66c8dd126680305f856bc4247fe2971b9598b0d8",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0018.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0019.txt": "721ac76b2353f019003c91d5de1b17ba87da966ce52437709af02fa6750ff125",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0019.txt": "b753d890345330bbb2bc921d656c1eda5a8190946c841424fe3611437d909a01",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/label_02/0020.txt": "8e14201118adc5264ec228650715bcf5828a43abdf066cc2a02ac15982f23a2a",
+   "/home/geminitt/projects/monodist/data/kitti_tracking/training/calib/0020.txt": "ff301b07d1f5f4491366b2c09bbb624e23d0be411a50e0384659893793c84cc7",
    "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/run.json": "780e7d0010cea91d8eb119b7d7d096dc9abac8e0c289207b3fa86eaed8f9fd71",
    "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0000.npz": "a5658fccf2553f2600b6ed50c6ae9acfc3a1e5fd5b0c344df84cc6186afc0fbf",
    "/home/geminitt/projects/monodist/runs/kaggle/train/frozen-source-2026-10-19/det/coco_nms/0001.npz": "686565739a8e789d78b89b7e2102571482b3e63fb851202267b3e3c7058cf39a",
@@ -453,80 +522,110 @@
   "protocol": "development only; filter chosen on each model's validation predictions; automatic IoU tracks"
  },
  "timing_hardware_environment": {
-  "commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
-  "kernel_version": 8,
+  "commit": "c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2",
+  "kernel_version": 10,
   "calibrations": 3,
   "timings": {
    "coco_nms": {
     "total_ms": [
-     28.329379000012977,
-     28.240945999982614,
-     28.41657999999825
+     31.129343500026607,
+     31.007047499997498,
+     31.296316999942064
+    ],
+    "p99_ms": [
+     37.60878115990294,
+     35.21411400004126,
+     42.57722800002739
     ],
     "fps": [
-     34.80644718540369,
-     35.18115280723174,
-     34.653697031088335
+     31.812294115431946,
+     32.07914256725692,
+     31.791481204163983
     ]
    },
    "coco_nms_pipelined": {
     "total_ms": [
-     15.187446499965063,
-     15.119396212554648,
-     15.243370999996841
+     19.400034000000232,
+     19.164849999924627,
+     19.56273599995484
+    ],
+    "p99_ms": [
+     23.614932139909115,
+     23.041114320013776,
+     27.00938899999983
     ],
     "fps": [
-     63.83124689168534,
-     66.92558064920564,
-     64.44885863031601
+     51.63833042833048,
+     51.69350194644608,
+     51.58285343818834
     ]
    },
    "finetuned_nms": {
     "total_ms": [
-     27.32779850003908,
-     27.24761681255501,
-     27.429112000049827
+     29.82070749999366,
+     29.71751299997294,
+     29.94761700000481
+    ],
+    "p99_ms": [
+     35.27455575998147,
+     33.85761589905104,
+     39.6946509999907
     ],
     "fps": [
-     36.104343750025684,
-     36.284481942204124,
-     36.40921251114413
+     33.21718495811629,
+     33.108038155073906,
+     33.57947110276598
     ]
    },
    "finetuned_nms_pipelined": {
     "total_ms": [
-     14.670286500006569,
-     14.551606499981062,
-     14.754767874939034
+     18.624264999971274,
+     18.49737037491792,
+     18.80471792499634
+    ],
+    "p99_ms": [
+     23.400587409909118,
+     22.346560000073623,
+     27.197943000032865
     ],
     "fps": [
-     68.21508452356491,
-     67.54446506339544,
-     67.00225264543785
+     52.73894157224517,
+     53.554908240235655,
+     54.21736979381106
     ]
    },
    "finetuned_e2e": {
     "total_ms": [
-     26.88224500002434,
-     26.788241000076596,
-     26.930767524956423
+     29.596729499985486,
+     29.49423419999846,
+     29.744653999955517
+    ],
+    "p99_ms": [
+     34.70023911989756,
+     33.871578233011064,
+     37.43622799993318
     ],
     "fps": [
-     37.19807819476839,
-     36.5293587245711,
-     36.66044879996426
+     33.613189533759886,
+     33.668301290451986,
+     33.260549863365824
     ]
    },
    "finetuned_e2e_pipelined": {
     "total_ms": [
-     14.334782999981144,
-     14.244520700009389,
-     14.409133500066673
+     18.347263999999086,
+     18.15821400009554,
+     18.537006000087786
+    ],
+    "p99_ms": [
+     24.50882828005205,
+     22.0956519201718,
+     29.19222099990293
     ],
     "fps": [
-     69.73022040395041,
-     67.31157964418499,
-     70.28788034651963
+     54.38597365029352,
+     54.578253684398476,
+     54.69103051395947
     ]
    }
   },
@@ -538,7 +637,7 @@
    "gpus": [
     {
      "name": "Tesla T4",
-     "uuid": "29896d10-5034-a17a-4cb6-4f4c51e297e2"
+     "uuid": "3de5d8ec-37ef-536a-9789-7719ea062a28"
     }
    ]
   },
@@ -549,30 +648,20 @@
   },
   "held_out_test_evaluated": false,
   "log_anomalies": 2,
-  "kernel_seconds": 928.1283183097839
+  "kernel_seconds": 1073.8224623203278
  },
  "limitations": [
   "driver paths identify the original workspace; adapt paths to reproduce elsewhere",
   "large model/prediction artifacts remain in Kaggle output and local runs; no new public release is claimed"
  ],
  "files": {
-  "summary.json": "236a5c95f21f062480cfed460e9a5878bfec666add7a5161495e84512c237c80",
-  "timing-verification.json": "32b9104e1c365eba04cf10ec3f2d86c15ad1694e3e7fb5d011540e92cb9dc13c",
-  "final-manifest.json": "0ebf41333b54eea15e8f866b8b20d30031644880b8beb1d230f2e189cdc4c88d",
+  "summary.json": "bdb5933fb1eb0b4d98be82d58a50d9c4221112b7993ba28d7e451c8bb30e8427",
+  "timing-verification.json": "7c8e68dd1e79bd08fcab74bdb94024ecc8d1392fd13bc22b874bcddae09af888",
+  "final-manifest.json": "df43b90256c2bcdc94baad585adc9e29918bda961d3c18121a04ed2b22574032",
   "tables.md": "25762c6f6134666ab2a5ddd15002c5f9075079429f68616df902712e4d458765",
-  "freeze.json": "5050fcc1463957e4c152bf4757266f7a5ba39b22b72830e8a6421b7080f11ad1",
-  "development-verification.json": "6b7b876f635bf13d7dea7cadbfef20fa591fe23f1d106b7185e91dc5a52e2586",
-  "drivers/prepare_report.py": "24d5076be03195342583aa3f5dd703d572b8fa280420c77861055cb99b8ca401",
-  "drivers/evaluate_final.py": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314"
- },
- "training_environment_log": [
-  "torch 2.11.0+cu128 | GPUs: ['Tesla T4', 'Tesla T4']"
- ],
- "software_test_scope": "Owner confirmed software-test TEST fixtures are allowed; pipeline fitting/selection remain development-only.",
- "report_checks": {
-  "cpu_tests": 83,
-  "cpu_seconds": 86.07,
-  "local_readme_check": "passed",
-  "remote_ci": "verify for the publishing commit"
+  "freeze.json": "b2875842b16d6c9d94ae04c3e0bdc79805f54d901fc20dfe5ccb67a8ffb82d22",
+  "development-verification.json": "f69022ef5d894ca44e4101b3e4d1cd612d7fba7496d30d8d0161068df22ef74d",
+  "drivers/prepare_report.py": "014ca366dd47c05111cb4013c003663667994e69d0805ea6f72caba474a1696f",
+  "drivers/evaluate_final.py": "150e97a5a698ea5eb8eff216495d1ebc723366ab3147da5c6d1e7f22e0cad194"
  }
 }

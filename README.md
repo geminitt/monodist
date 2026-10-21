@@ -18,13 +18,13 @@ and measure the complete pipeline on a T4.**
 ## Result
 
 The fixed fine-tuned NMS pipeline reaches **0.293 five-class AP50–95** on the held-out sequences.
-Its saved distance ensemble has **9.13% mean depth AbsRel** on correctly matched detections
-at least 2 m away. A causal Kalman filter reduces speed MAE from **6.01 to
-2.31 m/s** on matched observations with track history and a valid reference speed.
+Its saved distance ensemble has **9.17% mean depth AbsRel** on correctly matched detections
+at least 2 m away. A causal Kalman filter reduces speed MAE from **5.94 to
+2.30 m/s** on matched observations with track history and a valid reference speed.
 These populations differ; missed objects and false-positive distances are not included in the distance error.
 
-On a Tesla T4, the same saved ensemble, thresholds, tracker and TTC path takes **27.33 ms/frame**
-in serial processing. Overlapping the next PNG decode with current-frame processing gives **67.5 FPS**.
+On a Tesla T4, the same saved ensemble, thresholds, tracker and TTC path takes **29.82 ms/frame**
+in serial processing. Overlapping the next PNG decode with current-frame processing gives **53.6 FPS**.
 The latter is throughput, not capture-to-output latency.
 
 ---
@@ -38,7 +38,7 @@ The latter is throughput, not capture-to-output latency.
 | Detector | YOLO26n; COCO baseline or full KITTI fine-tune; NMS and NMS-free heads |
 | Classes | Car, Van, LargeVehicle (Truck/Tram), Pedestrian (Pedestrian/Person), Cyclist |
 | Reporting groups | Vehicle, Person, Cyclist; also class-agnostic detection |
-| Distance | Five MLPs trained from scratch; 11 box/class features, hidden layers 64/64, averaged in log depth |
+| Distance | Five MLPs trained from scratch; 14 features (5 box angles, 5 class indicators, a flag per cut image border), hidden layers 64/64, averaged in log depth |
 | Geometry baselines | Known size, $Z = fH/h$; ground plane, $Z = f h_\mathrm{cam}/(v_2-c_y)$, with known-size fallback |
 | Temporal output | Automatic same-class IoU association; causal constant-velocity Kalman filter on depth and depth rate |
 | TTC | Optical-axis depth divided by closing speed; infinite when not approaching |
@@ -108,22 +108,22 @@ comparison between detectors. Range and depth have different geometric targets.
 |---|---|---|---|---|---|---|---|
 | development | COCO NMS | Known size | 12.32% [10.08, 15.87] | 6.74% | 11.13% [9.34, 13.84] | 22814 | 622 |
 | development | COCO NMS | Ground plane | 25.82% [22.92, 29.09] | 16.94% | 24.99% [22.28, 27.96] | 22814 | 622 |
-| development | COCO NMS | MLP ensemble | 8.34% [7.76, 8.96] | 5.55% | 8.15% [7.61, 8.74] | 22814 | 622 |
+| development | COCO NMS | MLP ensemble | 8.42% [7.89, 9.02] | 5.83% | 8.11% [7.58, 8.68] | 22814 | 622 |
 | development | Fine-tuned NMS | Known size | 14.27% [12.84, 16.36] | 10.38% | 13.21% [12.13, 14.64] | 24267 | 695 |
 | development | Fine-tuned NMS | Ground plane | 25.37% [22.51, 28.33] | 17.18% | 24.33% [21.69, 27.00] | 24267 | 695 |
-| development | Fine-tuned NMS | MLP ensemble | 10.13% [8.88, 11.67] | 5.61% | 9.38% [8.41, 10.49] | 24267 | 695 |
+| development | Fine-tuned NMS | MLP ensemble | 9.43% [8.40, 10.60] | 5.48% | 8.83% [8.00, 9.74] | 24267 | 695 |
 | development | Fine-tuned NMS-free | Known size | 14.39% [12.77, 16.73] | 10.62% | 13.25% [12.03, 14.81] | 21186 | 684 |
 | development | Fine-tuned NMS-free | Ground plane | 24.99% [22.11, 28.38] | 16.80% | 23.86% [21.27, 26.73] | 21186 | 684 |
-| development | Fine-tuned NMS-free | MLP ensemble | 9.82% [8.40, 11.77] | 5.26% | 9.03% [7.97, 10.32] | 21186 | 684 |
+| development | Fine-tuned NMS-free | MLP ensemble | 9.10% [7.93, 10.62] | 5.21% | 8.50% [7.65, 9.47] | 21186 | 684 |
 | test | COCO NMS | Known size | 13.30% [12.05, 14.71] | 9.12% | 12.31% [11.08, 13.62] | 7292 | 151 |
 | test | COCO NMS | Ground plane | 21.94% [18.43, 25.96] | 17.34% | 21.25% [17.70, 25.29] | 7292 | 151 |
-| test | COCO NMS | MLP ensemble | 9.24% [8.25, 10.48] | 6.66% | 9.04% [8.03, 10.28] | 7292 | 151 |
+| test | COCO NMS | MLP ensemble | 9.56% [8.39, 11.01] | 6.59% | 9.37% [8.19, 10.84] | 7292 | 151 |
 | test | Fine-tuned NMS | Known size | 14.89% [13.95, 15.90] | 12.41% | 14.03% [13.11, 14.93] | 7869 | 161 |
 | test | Fine-tuned NMS | Ground plane | 20.68% [18.58, 23.02] | 17.76% | 19.84% [17.71, 22.13] | 7869 | 161 |
-| test | Fine-tuned NMS | MLP ensemble | 9.13% [8.20, 10.26] | 6.07% | 8.93% [8.01, 10.07] | 7869 | 161 |
+| test | Fine-tuned NMS | MLP ensemble | 9.17% [8.26, 10.28] | 6.17% | 8.91% [8.00, 10.06] | 7869 | 161 |
 | test | Fine-tuned NMS-free | Known size | 14.64% [13.70, 15.62] | 12.00% | 13.82% [12.95, 14.72] | 7185 | 161 |
 | test | Fine-tuned NMS-free | Ground plane | 19.96% [18.02, 22.06] | 17.66% | 19.14% [17.21, 21.18] | 7185 | 161 |
-| test | Fine-tuned NMS-free | MLP ensemble | 8.93% [8.08, 9.97] | 6.01% | 8.66% [7.83, 9.71] | 7185 | 161 |
+| test | Fine-tuned NMS-free | MLP ensemble | 9.08% [8.22, 10.09] | 6.18% | 8.78% [7.94, 9.81] | 7185 | 161 |
 
 ### Final TEST: MLP by class
 
@@ -131,21 +131,21 @@ A dash means there were no eligible matches, not zero error.
 
 | Detector | Class | Object-frames | Tracks | Depth AbsRel [95% CI] | Range AbsRel [95% CI] |
 |---|---|---|---|---|---|
-| COCO NMS | Car | 5034 | 116 | 9.81% [8.50, 11.30] | 9.51% [8.15, 11.06] |
+| COCO NMS | Car | 5034 | 116 | 9.77% [8.34, 11.50] | 9.51% [7.98, 11.27] |
 | COCO NMS | Van | 0 | 0 | — | — |
-| COCO NMS | LargeVehicle | 55 | 1 | 22.74% [22.74, 22.74] | 21.93% [21.93, 21.93] |
-| COCO NMS | Pedestrian | 2203 | 34 | 7.62% [6.49, 8.88] | 7.62% [6.52, 8.83] |
+| COCO NMS | LargeVehicle | 55 | 1 | 19.64% [19.64, 19.64] | 18.45% [18.45, 18.45] |
+| COCO NMS | Pedestrian | 2203 | 34 | 8.83% [7.19, 10.55] | 8.83% [7.22, 10.55] |
 | COCO NMS | Cyclist | 0 | 0 | — | — |
-| Fine-tuned NMS | Car | 5492 | 116 | 9.90% [8.72, 11.29] | 9.69% [8.52, 11.10] |
-| Fine-tuned NMS | Van | 225 | 8 | 12.32% [9.05, 16.00] | 10.93% [7.85, 14.41] |
+| Fine-tuned NMS | Car | 5492 | 116 | 10.03% [8.88, 11.43] | 9.71% [8.53, 11.14] |
+| Fine-tuned NMS | Van | 225 | 8 | 11.86% [9.06, 15.45] | 10.92% [7.98, 14.38] |
 | Fine-tuned NMS | LargeVehicle | 0 | 0 | — | — |
-| Fine-tuned NMS | Pedestrian | 1969 | 31 | 6.98% [5.74, 8.46] | 6.93% [5.73, 8.34] |
-| Fine-tuned NMS | Cyclist | 183 | 6 | 5.04% [3.33, 9.35] | 5.07% [3.34, 9.36] |
-| Fine-tuned NMS-free | Car | 5033 | 115 | 9.70% [8.61, 10.95] | 9.35% [8.28, 10.60] |
-| Fine-tuned NMS-free | Van | 161 | 7 | 12.07% [7.85, 17.41] | 10.98% [7.60, 15.63] |
-| Fine-tuned NMS-free | LargeVehicle | 1 | 1 | 52.43% [52.43, 52.43] | 44.40% [44.40, 44.40] |
-| Fine-tuned NMS-free | Pedestrian | 1834 | 32 | 6.90% [5.52, 8.47] | 6.89% [5.54, 8.41] |
-| Fine-tuned NMS-free | Cyclist | 156 | 6 | 4.78% [3.69, 7.79] | 4.75% [3.71, 7.65] |
+| Fine-tuned NMS | Pedestrian | 1969 | 31 | 6.79% [5.59, 8.17] | 6.73% [5.61, 8.08] |
+| Fine-tuned NMS | Cyclist | 183 | 6 | 5.75% [4.34, 9.64] | 5.82% [4.37, 9.80] |
+| Fine-tuned NMS-free | Car | 5033 | 115 | 9.71% [8.68, 10.93] | 9.34% [8.31, 10.53] |
+| Fine-tuned NMS-free | Van | 161 | 7 | 12.74% [8.72, 17.75] | 11.23% [8.05, 15.54] |
+| Fine-tuned NMS-free | LargeVehicle | 1 | 1 | 89.51% [89.51, 89.51] | 79.54% [79.54, 79.54] |
+| Fine-tuned NMS-free | Pedestrian | 1834 | 32 | 7.26% [5.82, 8.86] | 7.24% [5.84, 8.82] |
+| Fine-tuned NMS-free | Cyclist | 156 | 6 | 5.68% [4.48, 8.66] | 5.72% [4.52, 8.74] |
 
 ### Paired detector comparison
 
@@ -154,10 +154,10 @@ Intervals resample complete ground-truth tracks; an interval crossing zero does 
 
 | Partition | Compared with COCO NMS | Common object-frames | Tracks | MLP AbsRel difference [95% CI], percentage points |
 |---|---|---|---|---|
-| development | Fine-tuned NMS | 20312 | 603 | +1.17 [+0.06, +2.98] |
-| test | Fine-tuned NMS | 6538 | 146 | +0.23 [-0.21, +0.67] |
-| development | Fine-tuned NMS-free | 18162 | 593 | +1.17 [-0.14, +3.23] |
-| test | Fine-tuned NMS-free | 6071 | 147 | +0.08 [-0.45, +0.57] |
+| development | Fine-tuned NMS | 20312 | 603 | +0.27 [-0.45, +1.32] |
+| test | Fine-tuned NMS | 6538 | 146 | -0.03 [-0.57, +0.46] |
+| development | Fine-tuned NMS-free | 18162 | 593 | +0.37 [-0.62, +1.85] |
+| test | Fine-tuned NMS-free | 6071 | 147 | -0.09 [-0.73, +0.43] |
 
 ### Final TEST recall by true depth
 
@@ -189,12 +189,12 @@ The identity-continuity diagnostics in the recorded outputs are not official MOT
 
 | Partition | Detector | Speed rows | Speed MAE raw → filtered (m/s) | TTC within 20%, raw → filtered | TTC rows | Matched rows with history |
 |---|---|---|---|---|---|---|
-| development | COCO NMS | 23365 | 6.64 → 2.65 | 23.95% → 42.07% | 13975 | 94.75% |
-| development | Fine-tuned NMS | 24138 | 6.60 → 2.86 | 22.23% → 35.99% | 14775 | 93.96% |
-| development | Fine-tuned NMS-free | 20193 | 5.82 → 3.08 | 24.47% → 33.79% | 12390 | 89.58% |
-| test | COCO NMS | 7278 | 5.99 → 1.99 | 25.80% → 45.37% | 4593 | 95.26% |
-| test | Fine-tuned NMS | 7747 | 6.01 → 2.31 | 24.33% → 44.68% | 5125 | 94.76% |
-| test | Fine-tuned NMS-free | 6802 | 5.38 → 2.59 | 25.60% → 38.09% | 4558 | 91.31% |
+| development | COCO NMS | 23365 | 6.73 → 2.64 | 24.84% → 42.60% | 13975 | 94.75% |
+| development | Fine-tuned NMS | 24138 | 6.83 → 2.84 | 23.05% → 36.54% | 14775 | 93.96% |
+| development | Fine-tuned NMS-free | 20193 | 5.82 → 3.06 | 26.19% → 36.00% | 12390 | 89.58% |
+| test | COCO NMS | 7278 | 5.96 → 1.96 | 25.63% → 46.44% | 4593 | 95.26% |
+| test | Fine-tuned NMS | 7747 | 5.94 → 2.30 | 24.66% → 44.39% | 5125 | 94.76% |
+| test | Fine-tuned NMS-free | 6802 | 5.51 → 2.60 | 25.87% → 37.82% | 4558 | 91.31% |
 
 ## T4 timing
 
@@ -208,11 +208,11 @@ overhead, so it is not the sum of the displayed subset. FPS is the median of thr
 including round setup/drain. Repeated images can benefit from storage caching. Decode-overlapped FPS measures
 processing cadence; it does not establish per-image capture latency or arbitrary-camera real-time behavior.
 
-| Pipeline | Decode (ms) | Detector forward (ms) | Distance/tracking/TTC (ms) | Serial total (ms) | Serial FPS | Decode-overlapped FPS |
-|---|---|---|---|---|---|---|
-| COCO NMS | 11.31 | 9.53 | 1.74 | 28.33 | 34.8 | 64.4 |
-| Fine-tuned NMS | 11.14 | 9.16 | 1.67 | 27.33 | 36.3 | 67.5 |
-| Fine-tuned NMS-free | 11.11 | 9.56 | 1.64 | 26.88 | 36.7 | 69.7 |
+| Pipeline | Decode (ms) | Detector forward (ms) | Distance/tracking/TTC (ms) | Serial total (ms) | Serial p99 [95% CI] (ms) | Serial FPS | Decode-overlapped FPS |
+|---|---|---|---|---|---|---|---|
+| COCO NMS | 12.30 | 10.22 | 2.02 | 31.13 | 37.61 [35.21, 42.58] | 31.8 | 51.6 |
+| Fine-tuned NMS | 11.92 | 9.71 | 1.96 | 29.82 | 35.27 [33.86, 39.69] | 33.2 | 53.6 |
+| Fine-tuned NMS-free | 11.99 | 10.27 | 1.95 | 29.60 | 34.70 [33.87, 37.44] | 33.6 | 54.6 |
 
 ---
 
@@ -229,6 +229,9 @@ No numerical superiority over these systems is claimed under unmatched protocols
 ## Limits
 
 - One detector training run per configuration/fold; fold spread does not isolate seed variation.
+- TEST was scored three times for fine-tuned NMS (2026-10-19 with one shared border flag; 2026-10-22 with
+  per-border flags, then after a matching repair) and twice for the other pipelines. The per-border flags
+  were chosen on development out-of-fold results; no TEST score selected them.
 - Distance errors exclude misses and false-positive distances. Van/Cyclist coverage differs strongly from COCO.
 - Long tracks influence frame-weighted means. Track resampling does not model every dependence across
   objects or across the fold training runs.
@@ -274,7 +277,7 @@ enters rendering and diagnostics only. No detections or distance predictions are
 Build a local archive from the fixed fine-tuned NMS detector and its matching timed distance checkpoint:
 
 ```bash
-pixi run python -m monodist.bundle build --weights /path/to/best.pt --distance /path/to/distance.pt --images data/kitti_tracking/training/image_02/0012 --calibration data/kitti_tracking/training/calib/0012.txt --frames 78 --source-commit e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9 --out /path/to/monodist-demo.zip
+pixi run python -m monodist.bundle build --weights /path/to/best.pt --distance /path/to/distance.pt --images data/kitti_tracking/training/image_02/0012 --calibration data/kitti_tracking/training/calib/0012.txt --frames 78 --source-commit c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2 --out /path/to/monodist-demo.zip
 ```
 
 The archive includes unchanged checkpoints, saved confidence/filter settings, calibration, all 78 development
@@ -311,8 +314,8 @@ inference wall time. This demo does not replace the frozen quality/latency measu
 
 ## Provenance and reproduction
 
-Measurement library source is fixed at **`e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9`**. Training version 4, development analysis and timing
-version 8 use that source. Final scoring calls those frozen library functions with the saved timed models;
+Measurement library source is fixed at **`c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2`**. Training version 4 (source `e10d9f3`) produced the
+detector weights and detections; development analysis, final calibration and timing version 10 use this source. Final scoring calls those frozen library functions with the saved timed models;
 its orchestration driver is recorded separately by SHA-256. Report-rendering changes do not refit models.
 
 [results/rebuild/MANIFEST.json](results/rebuild/MANIFEST.json) identifies source/input/model hashes,
@@ -328,8 +331,8 @@ pixi run python -m monodist.report --check
 pixi run python -m monodist.report --summary
 
 # Build the pinned kernels without spending GPU quota:
-python kaggle/push.py train --mode full --commit e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9 --build-only
-python kaggle/push.py eval --mode full --commit e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9 --set DEADLINE=3600 --build-only
+python kaggle/push.py train --mode full --commit c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2 --build-only
+python kaggle/push.py eval --mode full --commit c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2 --set DEADLINE=3600 --build-only
 ```
 
 The generated tables use only [results/rebuild/summary.json](results/rebuild/summary.json).

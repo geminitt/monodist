@@ -1,110 +1,109 @@
 ## selection
 
-| val mAP50-95 | a: defaults | b: lower learning rate | c: + Van, Cyclist classes | d: c + DontCare grayed |
-|---|---|---|---|---|
-| fold 0 | 0.464 | **0.476** | 0.446 | 0.444 |
-| fold 1 | 0.505 | **0.521** | 0.512 | 0.503 |
-| fold 2 | **0.531** | 0.524 | 0.516 | 0.527 |
+| Development fold | Defaults: validation AP | Lower LR: validation AP | Chosen |
+|---|---|---|---|
+| 0 | 0.429 | 0.450 | b |
+| 1 | 0.336 | 0.318 | a |
+| 2 | 0.227 | 0.231 | b |
 
 ## detection
 
-| Detector | Car AP50-95 | Pedestrian AP50-95 | mAP50-95 | mAP50 | mAP50-95 per fold |
+| Partition | Detector | 5-class AP50–95 | AP50 | 3-group AP50–95 | Class-agnostic AP50–95 |
 |---|---|---|---|---|---|
-| COCO weights | 0.503 ± 0.040 | 0.287 ± 0.105 | 0.395 ± 0.061 | 0.746 ± 0.056 | 0.462 / 0.379 / 0.344 |
-| fine-tuned, NMS | 0.614 ± 0.033 | 0.315 ± 0.023 | 0.464 ± 0.024 | 0.790 ± 0.031 | 0.490 / 0.460 / 0.443 |
-| fine-tuned, NMS-free | 0.574 ± 0.039 | 0.283 ± 0.023 | 0.429 ± 0.029 | 0.723 ± 0.027 | 0.455 / 0.434 / 0.397 |
-
-## recall
-
-| Detector | Class | 0-10 m | 10-20 m | 20-40 m | >40 m |
-|---|---|---|---|---|---|
-| COCO weights | Car | 90% (3264) | 87% (5464) | 77% (11853) | 61% (6718) |
-| COCO weights | Pedestrian | 75% (3901) | 66% (5164) | 36% (2305) | 1% (100) |
-| fine-tuned, NMS | Car | 93% (3264) | 90% (5464) | 82% (11853) | 64% (6718) |
-| fine-tuned, NMS | Pedestrian | 80% (3901) | 60% (5164) | 23% (2305) | 0% (100) |
-| fine-tuned, NMS-free | Car | 89% (3264) | 83% (5464) | 74% (11853) | 56% (6718) |
-| fine-tuned, NMS-free | Pedestrian | 65% (3901) | 56% (5164) | 17% (2305) | 0% (100) |
+| development | COCO NMS | 0.206 ± 0.066 | 0.367 ± 0.070 | 0.251 ± 0.030 | 0.418 ± 0.062 |
+| development | Fine-tuned NMS | 0.308 ± 0.061 | 0.498 ± 0.087 | 0.335 ± 0.031 | 0.506 ± 0.062 |
+| development | Fine-tuned NMS-free | 0.271 ± 0.029 | 0.435 ± 0.039 | 0.307 ± 0.025 | 0.466 ± 0.051 |
+| test | COCO NMS | 0.202 | 0.361 | 0.261 | 0.414 |
+| test | Fine-tuned NMS | 0.293 | 0.478 | 0.412 | 0.521 |
+| test | Fine-tuned NMS-free | 0.270 | 0.439 | 0.379 | 0.488 |
 
 ## distance
 
-| Detector | Method | Mean AbsRel [95% CI] | Median | Per-object mean [95% CI] | Cars not truncated | Pedestrians not truncated |
+| Partition | Detector | Method | Mean depth AbsRel [95% CI] | Median depth AbsRel | Mean range AbsRel [95% CI] | Object-frames | Tracks |
+|---|---|---|---|---|---|---|---|
+| development | COCO NMS | Known size | 12.32% [10.08, 15.87] | 6.74% | 11.13% [9.34, 13.84] | 22814 | 622 |
+| development | COCO NMS | Ground plane | 25.82% [22.92, 29.09] | 16.94% | 24.99% [22.28, 27.96] | 22814 | 622 |
+| development | COCO NMS | MLP ensemble | 8.42% [7.89, 9.02] | 5.83% | 8.11% [7.58, 8.68] | 22814 | 622 |
+| development | Fine-tuned NMS | Known size | 14.27% [12.84, 16.36] | 10.38% | 13.21% [12.13, 14.64] | 24267 | 695 |
+| development | Fine-tuned NMS | Ground plane | 25.37% [22.51, 28.33] | 17.18% | 24.33% [21.69, 27.00] | 24267 | 695 |
+| development | Fine-tuned NMS | MLP ensemble | 9.43% [8.40, 10.60] | 5.48% | 8.83% [8.00, 9.74] | 24267 | 695 |
+| development | Fine-tuned NMS-free | Known size | 14.39% [12.77, 16.73] | 10.62% | 13.25% [12.03, 14.81] | 21186 | 684 |
+| development | Fine-tuned NMS-free | Ground plane | 24.99% [22.11, 28.38] | 16.80% | 23.86% [21.27, 26.73] | 21186 | 684 |
+| development | Fine-tuned NMS-free | MLP ensemble | 9.10% [7.93, 10.62] | 5.21% | 8.50% [7.65, 9.47] | 21186 | 684 |
+| test | COCO NMS | Known size | 13.30% [12.05, 14.71] | 9.12% | 12.31% [11.08, 13.62] | 7292 | 151 |
+| test | COCO NMS | Ground plane | 21.94% [18.43, 25.96] | 17.34% | 21.25% [17.70, 25.29] | 7292 | 151 |
+| test | COCO NMS | MLP ensemble | 9.56% [8.39, 11.01] | 6.59% | 9.37% [8.19, 10.84] | 7292 | 151 |
+| test | Fine-tuned NMS | Known size | 14.89% [13.95, 15.90] | 12.41% | 14.03% [13.11, 14.93] | 7869 | 161 |
+| test | Fine-tuned NMS | Ground plane | 20.68% [18.58, 23.02] | 17.76% | 19.84% [17.71, 22.13] | 7869 | 161 |
+| test | Fine-tuned NMS | MLP ensemble | 9.17% [8.26, 10.28] | 6.17% | 8.91% [8.00, 10.06] | 7869 | 161 |
+| test | Fine-tuned NMS-free | Known size | 14.64% [13.70, 15.62] | 12.00% | 13.82% [12.95, 14.72] | 7185 | 161 |
+| test | Fine-tuned NMS-free | Ground plane | 19.96% [18.02, 22.06] | 17.66% | 19.14% [17.21, 21.18] | 7185 | 161 |
+| test | Fine-tuned NMS-free | MLP ensemble | 9.08% [8.22, 10.09] | 6.18% | 8.78% [7.94, 9.81] | 7185 | 161 |
+
+## temporal
+
+| Partition | Detector | Speed rows | Speed MAE raw → filtered (m/s) | TTC within 20%, raw → filtered | TTC rows | Matched rows with history |
 |---|---|---|---|---|---|---|
-| COCO weights | known size | 12.6% [10.7, 15.5] | 7.5% | 13.0% [12.1, 14.0] | 8.7% | 8.4% |
-| COCO weights | ground plane | 24.0% [21.6, 26.7] | 15.8% | 28.7% [24.8, 33.3] | 24.3% | 16.9% |
-| COCO weights | MLP | 8.1% [7.6, 8.6] | 5.4% | 9.6% [9.1, 10.1] | 6.9% | 7.0% |
-| fine-tuned, NMS | known size | 12.6% [11.2, 14.4] | 8.7% | 12.6% [11.8, 13.4] | 10.6% | 7.1% |
-| fine-tuned, NMS | ground plane | 24.6% [22.0, 27.4] | 16.1% | 29.7% [25.1, 35.6] | 24.9% | 14.8% |
-| fine-tuned, NMS | MLP | 8.9% [8.0, 10.1] | 5.5% | 9.6% [9.0, 10.2] | 6.8% | 6.9% |
-| fine-tuned, NMS-free | known size | 12.9% [11.4, 15.0] | 9.3% | 12.8% [12.1, 13.6] | 10.9% | 7.2% |
-| fine-tuned, NMS-free | ground plane | 24.8% [21.9, 27.8] | 16.1% | 30.5% [25.3, 36.8] | 25.0% | 14.5% |
-| fine-tuned, NMS-free | MLP | 9.0% [8.0, 10.3] | 5.3% | 9.7% [9.2, 10.4] | 6.7% | 6.6% |
+| development | COCO NMS | 23365 | 6.73 → 2.64 | 24.84% → 42.60% | 13975 | 94.75% |
+| development | Fine-tuned NMS | 24138 | 6.83 → 2.84 | 23.05% → 36.54% | 14775 | 93.96% |
+| development | Fine-tuned NMS-free | 20193 | 5.82 → 3.06 | 26.19% → 36.00% | 12390 | 89.58% |
+| test | COCO NMS | 7278 | 5.96 → 1.96 | 25.63% → 46.44% | 4593 | 95.26% |
+| test | Fine-tuned NMS | 7747 | 5.94 → 2.30 | 24.66% → 44.39% | 5125 | 94.76% |
+| test | Fine-tuned NMS-free | 6802 | 5.51 → 2.60 | 25.87% → 37.82% | 4558 | 91.31% |
 
-## bins
+## classes
 
-| Detector | Method | Class | 0-10 m | 10-20 m | 20-40 m | >40 m |
-|---|---|---|---|---|---|---|
-| COCO weights | known size | Car | 46.8% (2901) | 9.8% (4729) | 8.4% (9088) | 7.4% (4067) |
-| COCO weights | known size | Pedestrian | 11.1% (2937) | 7.1% (3384) | 8.0% (822) | 6.1% (1) |
-| COCO weights | ground plane | Car | 31.9% (2901) | 14.9% (4729) | 24.5% (9088) | 39.3% (4067) |
-| COCO weights | ground plane | Pedestrian | 13.7% (2937) | 16.7% (3384) | 32.6% (822) | 1.1% (1) |
-| COCO weights | MLP | Car | 16.9% (2901) | 6.3% (4729) | 7.3% (9088) | 7.1% (4067) |
-| COCO weights | MLP | Pedestrian | 8.6% (2937) | 6.2% (3384) | 6.5% (822) | 15.4% (1) |
-| fine-tuned, NMS | known size | Car | 40.1% (2984) | 13.7% (4925) | 9.1% (9741) | 7.7% (4291) |
-| fine-tuned, NMS | known size | Pedestrian | 9.4% (3135) | 5.5% (3112) | 9.4% (519) | - |
-| fine-tuned, NMS | ground plane | Car | 39.4% (2984) | 16.9% (4925) | 25.5% (9741) | 36.1% (4291) |
-| fine-tuned, NMS | ground plane | Pedestrian | 12.2% (3135) | 15.4% (3112) | 32.9% (519) | - |
-| fine-tuned, NMS | MLP | Car | 27.6% (2984) | 6.4% (4925) | 6.7% (9741) | 6.8% (4291) |
-| fine-tuned, NMS | MLP | Pedestrian | 8.6% (3135) | 5.8% (3112) | 6.7% (519) | - |
-| fine-tuned, NMS-free | known size | Car | 39.5% (2868) | 13.9% (4509) | 9.5% (8712) | 7.6% (3782) |
-| fine-tuned, NMS-free | known size | Pedestrian | 8.8% (2535) | 6.2% (2898) | 8.6% (400) | - |
-| fine-tuned, NMS-free | ground plane | Car | 39.3% (2868) | 16.4% (4509) | 26.1% (8712) | 36.1% (3782) |
-| fine-tuned, NMS-free | ground plane | Pedestrian | 11.0% (2535) | 15.1% (2898) | 36.3% (400) | - |
-| fine-tuned, NMS-free | MLP | Car | 28.0% (2868) | 6.2% (4509) | 6.8% (8712) | 6.6% (3782) |
-| fine-tuned, NMS-free | MLP | Pedestrian | 8.1% (2535) | 5.8% (2898) | 6.6% (400) | - |
-
-## floor
-
-| Objects found by | Method on the label boxes | All | Cars not truncated | Pedestrians not truncated |
-|---|---|---|---|---|
-| COCO weights | known size | 11.5% | 10.1% | 6.4% |
-| COCO weights | ground plane | 25.2% | 26.4% | 15.3% |
-| fine-tuned, NMS | known size | 12.0% | 10.1% | 6.9% |
-| fine-tuned, NMS | ground plane | 25.5% | 26.2% | 14.9% |
-| fine-tuned, NMS-free | known size | 12.1% | 10.2% | 6.6% |
-| fine-tuned, NMS-free | ground plane | 25.3% | 25.9% | 14.7% |
-
-## box_iou
-
-| Detector | train (folds 0/1/2) | val | test |
-|---|---|---|---|
-| COCO weights | 0.821 / 0.813 / 0.804 | 0.776 / 0.839 / 0.857 | 0.837 / 0.804 / 0.805 |
-| fine-tuned, NMS | 0.894 / 0.913 / 0.871 | 0.830 / 0.875 / 0.860 | 0.855 / 0.843 / 0.846 |
-| fine-tuned, NMS-free | 0.895 / 0.913 / 0.874 | 0.832 / 0.879 / 0.850 | 0.862 / 0.853 / 0.841 |
-
-## hypothesis
-
-| Fold 0 | val mAP50-95, NMS head | val mAP50-95, NMS-free head | test mAP50-95, NMS head | test mAP50-95, NMS-free head | best epoch |
+| Detector | Class | Object-frames | Tracks | Depth AbsRel [95% CI] | Range AbsRel [95% CI] |
 |---|---|---|---|---|---|
-| a: defaults | 0.464 | 0.449 | 0.473 | 0.455 | 13 |
-| e: epoch chosen by NMS-free head | 0.464 | 0.449 | 0.473 | 0.455 | 13 |
+| COCO NMS | Car | 5034 | 116 | 9.77% [8.34, 11.50] | 9.51% [7.98, 11.27] |
+| COCO NMS | Van | 0 | 0 | — | — |
+| COCO NMS | LargeVehicle | 55 | 1 | 19.64% [19.64, 19.64] | 18.45% [18.45, 18.45] |
+| COCO NMS | Pedestrian | 2203 | 34 | 8.83% [7.19, 10.55] | 8.83% [7.22, 10.55] |
+| COCO NMS | Cyclist | 0 | 0 | — | — |
+| Fine-tuned NMS | Car | 5492 | 116 | 10.03% [8.88, 11.43] | 9.71% [8.53, 11.14] |
+| Fine-tuned NMS | Van | 225 | 8 | 11.86% [9.06, 15.45] | 10.92% [7.98, 14.38] |
+| Fine-tuned NMS | LargeVehicle | 0 | 0 | — | — |
+| Fine-tuned NMS | Pedestrian | 1969 | 31 | 6.79% [5.59, 8.17] | 6.73% [5.61, 8.08] |
+| Fine-tuned NMS | Cyclist | 183 | 6 | 5.75% [4.34, 9.64] | 5.82% [4.37, 9.80] |
+| Fine-tuned NMS-free | Car | 5033 | 115 | 9.71% [8.68, 10.93] | 9.34% [8.31, 10.53] |
+| Fine-tuned NMS-free | Van | 161 | 7 | 12.74% [8.72, 17.75] | 11.23% [8.05, 15.54] |
+| Fine-tuned NMS-free | LargeVehicle | 1 | 1 | 89.51% [89.51, 89.51] | 79.54% [79.54, 79.54] |
+| Fine-tuned NMS-free | Pedestrian | 1834 | 32 | 7.26% [5.82, 8.86] | 7.24% [5.84, 8.82] |
+| Fine-tuned NMS-free | Cyclist | 156 | 6 | 5.68% [4.48, 8.66] | 5.72% [4.52, 8.74] |
+
+## recall
+
+| Detector | Class | 0–10 m | 10–20 m | 20–40 m | >40 m |
+|---|---|---|---|---|---|
+| COCO NMS | Car | 92.9% (902) | 91.2% (1391) | 69.4% (3208) | 52.8% (1361) |
+| COCO NMS | Van | 0.0% (52) | 0.0% (61) | 0.0% (123) | 0.0% (201) |
+| COCO NMS | LargeVehicle | 81.8% (11) | 100.0% (11) | 97.2% (36) | — |
+| COCO NMS | Pedestrian | 75.2% (932) | 78.1% (1391) | 57.0% (726) | 7.1% (28) |
+| COCO NMS | Cyclist | 0.0% (77) | 0.0% (107) | 0.0% (183) | 0.0% (6) |
+| Fine-tuned NMS | Car | 93.3% (902) | 95.8% (1391) | 80.5% (3208) | 55.9% (1361) |
+| Fine-tuned NMS | Van | 90.4% (52) | 96.7% (61) | 73.2% (123) | 15.9% (201) |
+| Fine-tuned NMS | LargeVehicle | 0.0% (11) | 0.0% (11) | 0.0% (36) | — |
+| Fine-tuned NMS | Pedestrian | 82.0% (932) | 73.0% (1391) | 26.0% (726) | 0.0% (28) |
+| Fine-tuned NMS | Cyclist | 80.5% (77) | 74.8% (107) | 22.4% (183) | 0.0% (6) |
+| Fine-tuned NMS-free | Car | 87.4% (902) | 91.5% (1391) | 73.3% (3208) | 47.3% (1361) |
+| Fine-tuned NMS-free | Van | 80.8% (52) | 88.5% (61) | 44.7% (123) | 6.5% (201) |
+| Fine-tuned NMS-free | LargeVehicle | 9.1% (11) | 0.0% (11) | 0.0% (36) | — |
+| Fine-tuned NMS-free | Pedestrian | 73.4% (932) | 71.4% (1391) | 21.6% (726) | 0.0% (28) |
+| Fine-tuned NMS-free | Cyclist | 66.2% (77) | 71.0% (107) | 15.8% (183) | 0.0% (6) |
 
 ## latency
 
-| Configuration | read | decode | preprocess | inference | postprocess | overhead | distance | total | total 95% CI | FPS per round |
-|---|---|---|---|---|---|---|---|---|---|---|
-| coco_1280 | 1.0 | 12.0 | 2.6 | 9.8 | 0.6 | 0.3 | 0.5 | 27.6 | 27.4-27.8 | 24/37/37 |
-| coco_1280_nms | 0.9 | 11.9 | 3.4 | 9.5 | 1.4 | 0.3 | 0.5 | 27.9 | 27.4-28.0 | 36/36/36 |
-| ft_1280 | 0.9 | 12.1 | 3.5 | 9.6 | 0.7 | 0.3 | 0.5 | 27.3 | 27.1-27.4 | 37/37/37 |
-| ft_1280_cg | 0.9 | 11.1 | 2.0 | 9.3 | 0.5 | 0.3 | 0.5 | 24.6 | 24.5-24.7 | 43/41/39 |
-| ft_1280_fp16 | 0.9 | 11.2 | 2.3 | 9.1 | 0.5 | 0.3 | 0.5 | 24.7 | 24.7-24.8 | 40/40/40 |
-| ft_1280_nms | 0.9 | 11.8 | 3.3 | 9.2 | 1.4 | 0.3 | 0.5 | 27.4 | 27.1-27.6 | 37/37/37 |
-| ft_1280_nms_cg | 0.9 | 11.1 | 2.3 | 9.4 | 1.3 | 0.3 | 0.5 | 26.0 | 25.9-26.0 | 38/38/38 |
-| ft_1280_nms_pipelined | 0.8 | 11.2 | 2.4 | 8.6 | 1.3 | 0.3 | 0.5 | 13.2 | 13.2-13.3 | 74/74/74 |
-| ft_1280_nms_trt16 | 0.9 | 11.0 | 2.3 | 3.8 | 1.2 | 0.3 | 0.5 | 20.1 | 20.1-20.1 | 49/49/50 |
-| ft_1280_nms_trt16_pipelined | 0.8 | 11.0 | 2.4 | 3.9 | 1.3 | 0.3 | 0.5 | 12.2 | 12.2-12.3 | 80/81/79 |
-| ft_1280_pipelined | 0.8 | 11.3 | 2.4 | 8.8 | 0.5 | 0.4 | 0.5 | 12.9 | 12.8-12.9 | 76/74/76 |
-| ft_1280_trt16 | 0.9 | 11.1 | 2.3 | 3.9 | 0.5 | 0.3 | 0.5 | 19.4 | 19.4-19.5 | 51/51/51 |
-| ft_1280_trt16_pipelined | 0.8 | 11.3 | 2.4 | 3.9 | 0.5 | 0.3 | 0.5 | 12.6 | 12.5-12.7 | 74/79/77 |
-| ft_640 | 0.9 | 11.1 | 0.8 | 8.2 | 0.5 | 0.3 | 0.5 | 22.4 | 22.3-22.4 | 44/45/44 |
-| ft_640_trt16 | 0.8 | 11.1 | 0.8 | 2.7 | 0.5 | 0.3 | 0.5 | 16.7 | 16.7-16.8 | 59/59/59 |
-| ft_640_trt16_pipelined | 0.9 | 11.1 | 0.9 | 2.7 | 0.5 | 0.3 | 0.5 | 12.4 | 12.4-12.5 | 79/79/79 |
+| Pipeline | Decode (ms) | Detector forward (ms) | Distance/tracking/TTC (ms) | Serial total (ms) | Serial p99 [95% CI] (ms) | Serial FPS | Decode-overlapped FPS |
+|---|---|---|---|---|---|---|---|
+| COCO NMS | 12.30 | 10.22 | 2.02 | 31.13 | 37.61 [35.21, 42.58] | 31.8 | 51.6 |
+| Fine-tuned NMS | 11.92 | 9.71 | 1.96 | 29.82 | 35.27 [33.86, 39.69] | 33.2 | 53.6 |
+| Fine-tuned NMS-free | 11.99 | 10.27 | 1.95 | 29.60 | 34.70 [33.87, 37.44] | 33.6 | 54.6 |
+
+## paired
+
+| Partition | Compared with COCO NMS | Common object-frames | Tracks | MLP AbsRel difference [95% CI], percentage points |
+|---|---|---|---|---|
+| development | Fine-tuned NMS | 20312 | 603 | +0.27 [-0.45, +1.32] |
+| test | Fine-tuned NMS | 6538 | 146 | -0.03 [-0.57, +0.46] |
+| development | Fine-tuned NMS-free | 18162 | 593 | +0.37 [-0.62, +1.85] |
+| test | Fine-tuned NMS-free | 6071 | 147 | -0.09 [-0.73, +0.43] |

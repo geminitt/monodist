@@ -1,7 +1,8 @@
 {
- "source_commit": "e10d9f3d6e4ade1b6571c295cf286be8b8c5c2f9",
- "scoring_driver_sha256": "75c7785e1b23c897f03e8c709e0046950328259d9d7d0b98f03863831a06a314",
+ "source_commit": "c7124a951f271b00cc9ce45d4a6a8e393f9bc9b2",
+ "scoring_driver_sha256": "150e97a5a698ea5eb8eff216495d1ebc723366ab3147da5c6d1e7f22e0cad194",
  "final_configuration": "b",
+ "distance_features": "edge",
  "test_sequences": [
   "0003",
   "0007",
@@ -11,7 +12,7 @@
  ],
  "models": {
   "coco_nms": {
-   "distance_sha256": "255ca3b4cc3ed4dcde601d6f2dab099a1908af230dce855614e7168a5b676173",
+   "distance_sha256": "bf366a66e5f7ca9f8d95032b3740e1e33756b9d441f1f7ba96dc5f7809560888",
    "thresholds": {
     "Car": 0.34000012278556824,
     "Van": 1.0,
@@ -22,10 +23,26 @@
    "temporal": {
     "meas_rel": 0.05,
     "accel": 4.0
-   }
+   },
+   "features": [
+    "h/f",
+    "w/f",
+    "(v2-cy)/f",
+    "(v1-cy)/f",
+    "(u-cx)/f",
+    "car",
+    "van",
+    "largevehicle",
+    "pedestrian",
+    "cyclist",
+    "cut_left",
+    "cut_right",
+    "cut_top",
+    "cut_bottom"
+   ]
   },
   "finetuned_nms": {
-   "distance_sha256": "de6e1ee53d34f98c29eaab90290b0dd6d4dd120805f0200ff06e190f92469c94",
+   "distance_sha256": "484f7c28781cd3f2e1e932371885f3ed2e098e4d736c2cb1fbfc6a0e7087165f",
    "thresholds": {
     "Car": 0.2543703019618988,
     "Van": 0.23012670874595642,
@@ -36,10 +53,26 @@
    "temporal": {
     "meas_rel": 0.02,
     "accel": 1.0
-   }
+   },
+   "features": [
+    "h/f",
+    "w/f",
+    "(v2-cy)/f",
+    "(v1-cy)/f",
+    "(u-cx)/f",
+    "car",
+    "van",
+    "largevehicle",
+    "pedestrian",
+    "cyclist",
+    "cut_left",
+    "cut_right",
+    "cut_top",
+    "cut_bottom"
+   ]
   },
   "finetuned_e2e": {
-   "distance_sha256": "94b3bf0c2fbaa6e7a8b890c8401ea40f83da36bc9a24ea3fe5a8fcdb6eee2f0c",
+   "distance_sha256": "d83c485c38e70cd39f051bc5b953c300ecb970543ba7213986fc0b661e312a3a",
    "thresholds": {
     "Car": 0.207401841878891,
     "Van": 0.16455304622650146,
@@ -50,13 +83,35 @@
    "temporal": {
     "meas_rel": 0.02,
     "accel": 0.25
-   }
+   },
+   "features": [
+    "h/f",
+    "w/f",
+    "(v2-cy)/f",
+    "(v1-cy)/f",
+    "(u-cx)/f",
+    "car",
+    "van",
+    "largevehicle",
+    "pedestrian",
+    "cyclist",
+    "cut_left",
+    "cut_right",
+    "cut_top",
+    "cut_bottom"
+   ]
   }
  },
  "software_tests_may_use_TEST": true,
  "pipeline_choices_fixed_before_final_scoring": true,
+ "test_scoring_count": {
+  "finetuned_nms": 3,
+  "coco_nms": 2,
+  "finetuned_e2e": 2
+ },
+ "note": "written 2026-10-22 after TEST scoring started; the models are the verified eval version 10 outputs, fixed before scoring and checked by hash",
  "preflight_complete": {
-  "signature": "50626fda596ee67ab5a39210c60dd8f53cb670c6266390e73b5de5c51c2fbb26",
+  "signature": "3b0f9a90ee631d2b39e11139ef668bb78a562f5855de47a358752abb18cf6b90",
   "configurations": 3,
   "pipeline_test_evaluated": false
  }
