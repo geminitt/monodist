@@ -140,17 +140,26 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None, 
     info["val_detection"] = match.detection_report({k: v[vm] for k, v in det.items()}, val_gt, status[vm])
     # Reporting groups (Vehicle = Car + Van + LargeVehicle): a van found as a car counts as found.
     gdet, ggt = match.regroup(tdet, test_gt, kitti.GROUP_OF)
-    gstatus, ggt_idx = match.evaluate(gdet, ggt)
+    gstatus, _ = match.evaluate(gdet, ggt)
     info["detection_groups"] = match.detection_report(gdet, ggt, gstatus, names=kitti.GROUPS)
-    info["recall_by_distance_groups"] = match.recall_by_distance(
-        gdet, ggt, gstatus, ggt_idx, match.per_detection_conf(tdet, conf), metrics.BINS, names=kitti.GROUPS)
     # Class-agnostic view (the decision layer's): was the object found at all, whatever class was predicted?
     # Each detection keeps the threshold of the class it was predicted as.
     adet, agt = match.agnostic(tdet, test_gt)
-    astatus, agt_idx = match.evaluate(adet, agt)
+    astatus, _ = match.evaluate(adet, agt)
     info["detection_agnostic"] = match.detection_report(adet, agt, astatus, names=("object",))
+    # Recall and precision at the operating point: classes in one group have different thresholds, so matching
+    # is repeated on the kept detections only; a discarded detection must not take an object from a kept one.
+    kept = tdet["score"] >= match.per_detection_conf(tdet, conf)
+    kdet = {k: v[kept] for k, v in tdet.items()}
+    every = np.zeros(int(kept.sum()))  # the thresholds are already applied
+    gdet, ggt = match.regroup(kdet, test_gt, kitti.GROUP_OF)
+    gstatus, ggt_idx = match.evaluate(gdet, ggt, thresholds=[0.5])
+    info["recall_by_distance_groups"] = match.recall_by_distance(
+        gdet, ggt, gstatus, ggt_idx, every, metrics.BINS, names=kitti.GROUPS)
+    adet, agt = match.agnostic(kdet, test_gt)
+    kstatus, agt_idx = match.evaluate(adet, agt, thresholds=[0.5])
     info["recall_by_distance_agnostic"] = match.recall_by_distance(
-        adet, agt, astatus, agt_idx, match.per_detection_conf(tdet, conf), metrics.BINS, names=("object",))["object"]
+        adet, agt, kstatus, agt_idx, every, metrics.BINS, names=("object",))["object"]
 
     pairs = match.matched_pairs(det, gt, status, gt_idx, match.per_detection_conf(det, conf))
     near = pairs["z"] < MIN_Z
@@ -178,10 +187,8 @@ def predict(root, det_dir, split=None, seed=0, mlp_epochs=150, save_model=None, 
         og = {k: v for k, v in gt.items() if k[0] in seqs_observed}
         np.savez_compressed(save_observations, **observations(od, og, model, cam))
 
-    kept = tdet["score"] >= match.per_detection_conf(tdet, conf)
-    kdet = {k: v[kept] for k, v in tdet.items()}
     info["precision_by_predicted_distance"] = precision_by_distance(
-        kdet, astatus[kept], mlp.predict(model, feats(kdet, cam)), metrics.BINS)
+        kdet, kstatus, mlp.predict(model, feats(kdet, cam)), metrics.BINS)
 
     za, zb, fallback = geometric(test, test["box"], cam, const)
     ga, gb, _ = geometric(test, test["gt_box"], cam, const)

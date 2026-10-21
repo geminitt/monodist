@@ -87,6 +87,28 @@ def test_tracking_artifacts_do_not_read_held_out_files(root, tmp_path, monkeypat
     assert np.allclose(rows["label_mlp"], rows["pred_mlp"])
 
 
+def test_discarded_detections_do_not_claim_objects(root, tmp_path, monkeypatch):
+    """Group and class-agnostic recall/precision count only kept detections, so a higher-score detection of a
+    class with a higher threshold, discarded at that threshold, must not take the object from a kept one."""
+    fold = kitti.FOLDS[0]
+    oracle_detections(root, tmp_path / "dev", seqs=kitti.DEVELOPMENT)
+    van = kitti.CLASSES.index("Van")
+    for seq in fold["test"]:  # a Van duplicate above every oracle Car, discarded at the Van threshold
+        d = dict(np.load(tmp_path / "dev" / f"{seq}.npz"))
+        car = d["cls"] == kitti.CLASSES.index("Car")
+        d["score"][d["cls"] == van] = 0.99  # the oracle Vans stay kept
+        np.savez(tmp_path / "dev" / f"{seq}.npz", frame=np.r_[d["frame"], d["frame"][car]],
+                 box=np.r_[d["box"], d["box"][car]], score=np.r_[d["score"], np.full(car.sum(), 0.95)],
+                 cls=np.r_[d["cls"], np.full(car.sum(), van)], image_hw=d["image_hw"])
+    conf = iter([0.5, 0.97, 0.5, 0.5, 0.5])  # per class in kitti.CLASSES order
+    monkeypatch.setattr(evaluate.match, "f1_threshold", lambda *_: next(conf))
+    info, _ = evaluate.predict(root, tmp_path / "dev", fold, mlp_epochs=3)
+    for rec in (info["recall_by_distance_agnostic"], *info["recall_by_distance_groups"].values()):
+        assert sum(rec["found"]) == sum(rec["total"]) > 0
+    prec = info["precision_by_predicted_distance"]
+    assert sum(prec["hits"]) == sum(prec["total"]) > 0
+
+
 def test_compare_on_common_objects(root, tmp_path):
     oracle_detections(root, tmp_path / "a")
     oracle_detections(root, tmp_path / "b", jitter=2.0)
