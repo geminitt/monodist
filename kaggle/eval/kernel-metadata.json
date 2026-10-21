@@ -9,8 +9,11 @@
   "enable_tpu": "false",
   "enable_internet": "true",
   "machine_shape": "NvidiaTeslaT4",
-  "dataset_sources": ["leducnhuan/kitti-tracking"],
+  "dataset_sources": [
+    "leducnhuan/kitti-tracking",
+    "spritker/monodist-train-frozen-source-2026-10-19"
+  ],
   "competition_sources": [],
-  "kernel_sources": ["spritker/monodist-train"],
+  "kernel_sources": [],
   "model_sources": []
 }
